@@ -102,6 +102,20 @@ async def handle_message(
         "Чтобы открыть меню, отправьте /start.",
     )
 
+    photo_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "aventus.jpg",
+    )
+
+    if message.text == "🌸 Каталог" and os.path.isfile(photo_path):
+        with open(photo_path, "rb") as photo:
+            await message.reply_photo(
+                photo=photo,
+                caption=text,
+                reply_markup=main_menu(),
+            )
+        return
+
     await message.reply_text(
         text,
         reply_markup=main_menu(),
