@@ -1,7 +1,7 @@
 
 import logging
 import os
-
+from telegram.error import TelegramError
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import (
     Application,
@@ -160,6 +160,120 @@ async def welcome_members(
             "По вопросам заказов: @kodenn88"
         )
 
+async def ban_spammer(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    message = update.effective_message
+    chat = update.effective_chat
+    user = update.effective_user
+
+    if message is None or chat is None:
+        return
+
+    if chat.type not in ("group", "supergroup"):
+        return
+
+    if message.sender_chat is not None or user is None:
+        await message.reply_text(
+            "Отправьте команду от своего личного аккаунта, "
+            "не анонимно и не от имени канала."
+        )
+        return
+
+    try:
+        moderator = await context.bot.get_chat_member(
+            chat_id=chat.id,
+            user_id=user.id,
+        )
+
+        allowed = (
+            moderator.status == "creator"
+            or (
+                moderator.status == "administrator"
+                and moderator.can_restrict_members
+            )
+        )
+
+        if not allowed:
+            await message.reply_text(
+                "Команда доступна только владельцу группы "
+                "и администраторам с правом блокировки."
+            )
+            return
+
+        replied = message.reply_to_message
+
+        if replied is None:
+            await message.reply_text(
+                "Ответьте на сообщение спамера командой /ban.\n"
+                "Внимание: блокировка бессрочная."
+            )
+            return
+
+        if replied.sender_chat is not None or replied.from_user is None:
+            await message.reply_text(
+                "Это сообщение отправлено от имени канала "
+                "или анонимного администратора. "
+                "Эта команда блокирует только пользователей."
+            )
+            return
+
+        target = replied.from_user
+
+        if target.id in (user.id, context.bot.id):
+            await message.reply_text(
+                "Нельзя заблокировать себя или этого бота."
+            )
+            return
+
+        target_member = await context.bot.get_chat_member(
+            chat_id=chat.id,
+            user_id=target.id,
+        )
+
+        if target_member.status in ("creator", "administrator"):
+            await message.reply_text(
+                "Владельца группы и администраторов "
+                "эта команда не блокирует."
+            )
+            return
+
+        bot_member = await context.bot.get_chat_member(
+            chat_id=chat.id,
+            user_id=context.bot.id,
+        )
+
+        if (
+            bot_member.status != "administrator"
+            or not bot_member.can_restrict_members
+        ):
+            await message.reply_text(
+                "Выдайте мне права администратора "
+                "с разрешением блокировать пользователей."
+            )
+            return
+
+        await context.bot.ban_chat_member(
+            chat_id=chat.id,
+            user_id=target.id,
+        )
+
+    except TelegramError:
+        logging.exception("Не удалось выполнить команду /ban")
+        await message.reply_text(
+            "Не удалось выполнить блокировку. "
+            "Проверьте права бота и логи BotHost."
+        )
+        return
+
+    await message.reply_text(
+        f"🚫 Пользователь {target.full_name} заблокирован.\n"
+        f"ID: {target.id}\n\n"
+        "Блокировка бессрочная. "
+        "Снять её можно в настройках группы."
+    )
+
 
 def main():
     token = os.environ.get("BOT_TOKEN", "").strip()
@@ -170,6 +284,14 @@ def main():
         )
 
     application = Application.builder().token(token).build()
+        application.add_handler(
+        CommandHandler(
+            "ban",
+            ban_spammer,
+            filters=filters.ChatType.GROUPS,
+        )
+    )
+
     application.add_handler(
         CommandHandler(
             "rules",
