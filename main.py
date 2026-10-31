@@ -121,6 +121,45 @@ async def handle_message(
         reply_markup=main_menu(),
     )
 
+async def group_rules(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    message = update.effective_message
+    if message is None:
+        return
+
+    await message.reply_text(
+        "📜 Информация группы «Нота 59»\n\n"
+        "Здесь обсуждаем парфюмерию и распивы.\n\n"
+        "Наличие, стоимость, оплату и получение "
+        "уточняйте у администратора до покупки.\n\n"
+        "Администратор: @kodenn88\n"
+        "https://t.me/kodenn88"
+    )
+
+
+async def welcome_members(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    message = update.effective_message
+    if message is None:
+        return
+
+    for member in message.new_chat_members:
+        if member.is_bot:
+            continue
+
+        await message.reply_text(
+            f"🌸 {member.first_name}, "
+            "добро пожаловать в «Нота 59»!\n\n"
+            "Рады видеть вас в нашем "
+            "парфюмерном сообществе.\n\n"
+            "Информация группы: /rules\n"
+            "По вопросам заказов: @kodenn88"
+        )
+
 
 def main():
     token = os.environ.get("BOT_TOKEN", "").strip()
@@ -131,6 +170,21 @@ def main():
         )
 
     application = Application.builder().token(token).build()
+    application.add_handler(
+        CommandHandler(
+            "rules",
+            group_rules,
+            filters=filters.ChatType.GROUPS,
+        )
+    )
+
+    application.add_handler(
+        MessageHandler(
+            filters.StatusUpdate.NEW_CHAT_MEMBERS
+            & filters.ChatType.GROUPS,
+            welcome_members,
+        )
+    )
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
