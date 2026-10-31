@@ -284,7 +284,7 @@ def main():
         )
 
     application = Application.builder().token(token).build()
-        application.add_handler(
+    application.add_handler(
         CommandHandler(
             "ban",
             ban_spammer,
