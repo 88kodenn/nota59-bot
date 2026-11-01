@@ -50,6 +50,61 @@ SECTIONS = {
         "Для заказа укажите аромат и объём:\n"
         "@kodenn88\n"
         "https://t.me/kodenn88"
+        def catalog_menu():
+    return ReplyKeyboardMarkup(
+        [
+            ["Creed Aventus"],
+            ["Louis Vuitton Pacific Chill"],
+            ["⬅️ Главное меню"],
+        ],
+        resize_keyboard=True,
+    )
+
+
+PACIFIC_CHILL_TEXT = (
+    "🌸 LOUIS VUITTON PACIFIC CHILL\n\n"
+    "На распив в объёмах 5 мл и 10 мл.\n\n"
+    "Есть ароматы, которые пытаются произвести впечатление, "
+    "а есть те, с которыми просто хорошо. "
+    "Pacific Chill — про второе. Представьте неспешное утро "
+    "в отпуске: впереди свободный день, а в руках — холодный "
+    "фруктовый коктейль с растёртой между пальцами мятой.\n\n"
+    "В его характере главное — сочность. Яркие цитрусы "
+    "с лёгкой горчинкой цедры встречаются с прохладной мятой "
+    "и смородиновой кислинкой. Но самое интересное здесь — "
+    "абрикос: мягкий, спелый, с ощущением бархатистой мякоти. "
+    "Базилик добавляет зелёную пряность и не даёт фруктовой "
+    "сладости превратить композицию в обычный компот. "
+    "Постепенно звучание становится спокойнее и мягче, "
+    "проявляется инжирный оттенок. Такое прочтение опирается "
+    "на заявленную пирамиду аромата.\n\n"
+    "Это не строгий парфюм под костюм, а история про "
+    "расслабленность, лёгкую рубашку и удовольствие "
+    "от простых вещей. Для тех, кто любит свежесть, "
+    "но хочет получить больше, чем просто лимон "
+    "и чистоту после душа.\n\n"
+    "Унисекс — для мужчин и женщин.\n\n"
+    "💰 СТОИМОСТЬ\n"
+    "• 5 мл — 1 800 ₽\n"
+    "• 10 мл — 3 600 ₽\n\n"
+    "Атомайзер включён в цену.\n\n"
+    "Для заказа укажите аромат и объём:\n"
+    "@kodenn88\n"
+    "https://t.me/kodenn88"
+)
+
+
+PERFUMES = {
+    "Creed Aventus": {
+        "photo": "aventus.jpg",
+        "text": SECTIONS["🌸 Каталог"],
+    },
+    "Louis Vuitton Pacific Chill": {
+        "photo": "pacific_chill.jpg",
+        "text": PACIFIC_CHILL_TEXT,
+    },
+}
+
     ),
     "🛒 Как купить": (
         "🛒 Как купить\n\n"
@@ -96,30 +151,62 @@ async def handle_message(
     if message is None:
         return
 
+    user_text = message.text
+
+    if user_text == "🌸 Каталог":
+        await message.reply_text(
+            "🌸 Каталог «Нота 59»\n\n"
+            "Выберите аромат:",
+            reply_markup=catalog_menu(),
+        )
+        return
+
+    if user_text == "⬅️ Главное меню":
+        await message.reply_text(
+            "Выберите нужный раздел:",
+            reply_markup=main_menu(),
+        )
+        return
+
+    perfume = PERFUMES.get(user_text)
+
+    if perfume is not None:
+        photo_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            perfume["photo"],
+        )
+
+        if os.path.isfile(photo_path):
+            try:
+                with open(photo_path, "rb") as photo:
+                    await message.reply_photo(
+                        photo=photo,
+                        caption=user_text,
+                        reply_markup=catalog_menu(),
+                    )
+            except TelegramError:
+                logging.exception(
+                    "Не удалось отправить фото аромата %s",
+                    user_text,
+                )
+
+        await message.reply_text(
+            perfume["text"],
+            reply_markup=catalog_menu(),
+        )
+        return
+
     text = SECTIONS.get(
-        message.text,
+        user_text,
         "Выберите раздел на клавиатуре ниже 🙂\n"
         "Чтобы открыть меню, отправьте /start.",
     )
-
-    photo_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "aventus.jpg",
-    )
-
-    if message.text == "🌸 Каталог" and os.path.isfile(photo_path):
-        with open(photo_path, "rb") as photo:
-            await message.reply_photo(
-                photo=photo,
-                caption=text,
-                reply_markup=main_menu(),
-            )
-        return
 
     await message.reply_text(
         text,
         reply_markup=main_menu(),
     )
+
 
 async def group_rules(
     update: Update,
