@@ -21,7 +21,10 @@ def make_warn():
     user = SimpleNamespace(id=222, full_name='Админ')
     api = SimpleNamespace(
         id=999,
-        get_chat_member=AsyncMock(return_value=SimpleNamespace(status='administrator', can_restrict_members=True)),
+        get_chat_member=AsyncMock(side_effect=lambda chat_id, user_id: SimpleNamespace(
+            status='administrator' if user_id == 222 else 'member',
+            can_restrict_members=True,
+        )),
     )
     update = SimpleNamespace(effective_message=message, effective_chat=chat, effective_user=user)
     context = SimpleNamespace(bot=api, bot_data={}, args=['спам'])
