@@ -25,13 +25,14 @@ def make_report():
 
 class ReportTests(unittest.IsolatedAsyncioTestCase):
     async def test_report_limit(self):
+        first_message, first_update, context = make_report()
         for _ in range(3):
-            message, update, context = make_report()
+            message, update, _ = make_report()
             await report.report_command(update, context)
-        message, update, context = make_report()
-        await report.report_command(update, context)
+        fourth_message, fourth_update, _ = make_report()
+        await report.report_command(fourth_update, context)
         self.assertEqual(context.bot.send_message.await_count, 3)
-        self.assertIn('Слишком много жалоб', message.reply_text.call_args.args[0])
+        self.assertIn('Слишком много жалоб', fourth_message.reply_text.call_args.args[0])
 
     async def test_report_without_reply(self):
         message, update, context = make_report()
