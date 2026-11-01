@@ -39,12 +39,13 @@ class WarnTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('Ответьте', message.reply_text.call_args.args[0])
 
     async def test_warn_flood(self):
+        _, _, context = make_warn()
         for _ in range(5):
-            message, update, context = make_warn()
+            message, update, _ = make_warn()
             await bot.warn_spammer(update, context)
-        message, update, context = make_warn()
-        await bot.warn_spammer(update, context)
-        self.assertIn('Слишком много команд /warn', message.reply_text.call_args.args[0])
+        sixth_message, sixth_update, _ = make_warn()
+        await bot.warn_spammer(sixth_update, context)
+        self.assertIn('Слишком много команд /warn', sixth_message.reply_text.call_args.args[0])
 
 
 class SecurityLogTests(unittest.TestCase):
