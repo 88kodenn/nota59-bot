@@ -1,8 +1,8 @@
-
 import logging
 import os
-from telegram.error import TelegramError
+
 from telegram import ReplyKeyboardMarkup, Update
+from telegram.error import TelegramError
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -10,6 +10,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -28,29 +29,7 @@ def main_menu():
     )
 
 
-SECTIONS = {
-        "🌸 Каталог": (
-        "🌸 CREED AVENTUS\n\n"
-        "ЧЕМ ПАХНЕТ\n"
-        "Свежий фруктово-древесный аромат: цитрусы, "
-        "яблоко и чёрная смородина сочетаются "
-        "с ананасовым акцентом. Далее — сухая древесина, "
-        "мшистые и слегка дымные оттенки.\n\n"
-        "ПИРАМИДА ПО FRAGRANTICA\n"
-        "Верхние ноты: бергамот, чёрная смородина, "
-        "яблоко, лимон, розовый перец.\n"
-        "Сердце: ананас, пачули, марокканский жасмин.\n"
-        "База: берёза, мускус, дубовый мох, "
-        "кедр, Ambroxan.\n\n"
-        "ОБЪЁМЫ И ЦЕНЫ\n"
-        "280 ₽ за 1 мл\n"
-        "• 5 мл — 1 400 ₽\n"
-        "• 10 мл — 2 800 ₽\n\n"
-        "Атомайзер включён в стоимость.\n\n"
-        "Для заказа укажите аромат и объём:\n"
-        "@kodenn88\n"
-        "https://t.me/kodenn88"
-        def catalog_menu():
+def catalog_menu():
     return ReplyKeyboardMarkup(
         [
             ["Creed Aventus"],
@@ -59,6 +38,30 @@ SECTIONS = {
         ],
         resize_keyboard=True,
     )
+
+
+AVENTUS_TEXT = (
+    "🌸 CREED AVENTUS\n\n"
+    "ЧЕМ ПАХНЕТ\n"
+    "Свежий фруктово-древесный аромат: цитрусы, "
+    "яблоко и чёрная смородина сочетаются "
+    "с ананасовым акцентом. Далее — сухая древесина, "
+    "мшистые и слегка дымные оттенки.\n\n"
+    "ПИРАМИДА ПО FRAGRANTICA\n"
+    "Верхние ноты: бергамот, чёрная смородина, "
+    "яблоко, лимон, розовый перец.\n"
+    "Сердце: ананас, пачули, марокканский жасмин.\n"
+    "База: берёза, мускус, дубовый мох, "
+    "кедр, Ambroxan.\n\n"
+    "ОБЪЁМЫ И ЦЕНЫ\n"
+    "280 ₽ за 1 мл\n"
+    "• 5 мл — 1 400 ₽\n"
+    "• 10 мл — 2 800 ₽\n\n"
+    "Атомайзер включён в стоимость.\n\n"
+    "Для заказа укажите аромат и объём:\n"
+    "@kodenn88\n"
+    "https://t.me/kodenn88"
+)
 
 
 PACIFIC_CHILL_TEXT = (
@@ -97,22 +100,23 @@ PACIFIC_CHILL_TEXT = (
 PERFUMES = {
     "Creed Aventus": {
         "photo": "aventus.jpg",
-        "text": SECTIONS["🌸 Каталог"],
+        "text": AVENTUS_TEXT,
     },
-        "Louis Vuitton Pacific Chill": {
+    "Louis Vuitton Pacific Chill": {
         "photo": "pacific_chill.jpeg",
         "text": PACIFIC_CHILL_TEXT,
     },
 }
 
-    ),
+
+SECTIONS = {
     "🛒 Как купить": (
         "🛒 Как купить\n\n"
         "Для заказа обратитесь к администратору группы «Нота 59».\n"
         "Укажите название аромата и желаемый объём.\n\n"
         "До оплаты уточните наличие, стоимость и способ получения."
     ),
-      "💬 Связаться": (
+    "💬 Связаться": (
         "💬 Администратор «Нота 59»\n\n"
         "По вопросам наличия ароматов и оформления заказа:\n"
         "@kodenn88\n\n"
@@ -189,6 +193,11 @@ async def handle_message(
                     "Не удалось отправить фото аромата %s",
                     user_text,
                 )
+        else:
+            logging.warning(
+                "Файл фотографии не найден: %s",
+                photo_path,
+            )
 
         await message.reply_text(
             perfume["text"],
@@ -246,6 +255,7 @@ async def welcome_members(
             "Информация группы: /rules\n"
             "По вопросам заказов: @kodenn88"
         )
+
 
 async def ban_spammer(
     update: Update,
@@ -371,6 +381,7 @@ def main():
         )
 
     application = Application.builder().token(token).build()
+
     application.add_handler(
         CommandHandler(
             "ban",
@@ -397,6 +408,7 @@ def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
+
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
