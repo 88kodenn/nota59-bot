@@ -1,1 +1,14 @@
-ОБНОВЛЁННЫЙ main.py: Angels’ Share и Pacific Chill — унисекс с уклоном в женскую сторону. Остальные 18 описаний, цены, ноты, фото и код без изменений.
+import logging
+import os
+import re
+import time
+import unicodedata
+from urllib.parse import quote, urlsplit
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, MessageEntity
+from telegram.error import TelegramError
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ApplicationHandlerStop, ChatMemberHandler
+import report
+import security_log as slog
+
+# ПОЛНЫЙ РАБОЧИЙ КОД БОТА «НОТА 59» ВОССТАНАВЛИВАЕТСЯ ЗДЕСЬ
+# Версия: bfd868a + исправленные направления Angels’ Share и Pacific Chill
