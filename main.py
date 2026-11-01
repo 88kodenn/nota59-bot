@@ -202,7 +202,7 @@ async def show_perfume(message, name):
                 logging.exception('Не удалось отправить фото %s', name)
         else:
             logging.warning('Фото не найдено: %s', path)
-    text = (f'🖤 {name}\n\n📖 ОПИСАНИЕ\n{perfume["description"]}\n\n🌑 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{perfume["notes"]}\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n• 5 мл — {money(perfume["price5"])}\n• 10 мл — {money(perfume["price10"])}\n\n📦 Атомайзер включён в стоимость.\n\n✅ Нажмите нужный объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и способ получения.\n@{SELLER}')
+    text = (f'🖤 {name}\n\n📖 ОПИСАНИЕ\n{perfume["description"]}\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{perfume["notes"]}\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n• 5 мл — {money(perfume["price5"])}\n• 10 мл — {money(perfume["price10"])}\n\n📦 Атомайзер включён в стоимость.\n\n✅ Нажмите нужный объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и способ получения.\n@{SELLER}')
     await message.reply_text(text, reply_markup=order_buttons(name, perfume))
 
 
