@@ -1,423 +1,238 @@
 import logging
 import os
+from urllib.parse import quote
 
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.error import TelegramError
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+
+logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.INFO)
+logging.getLogger('httpx').setLevel(logging.WARNING)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SELLER = 'kodenn88'
+
+# Цены — только за готовые объёмы. Описания авторские, ноты по Fragrantica.
+# Образные сравнения не являются дополнительными нотами.
+CATALOG = [
+    ('Amouage Interlude Man', 1350, 2700,
+     'Есть ароматы для знакомства, а есть — для появления. Пряный травяной старт здесь словно приоткрывает дверь в помещение, где тлеют благовония. Орегано и перец встречаются с густым ладаном, тёплыми смолами и амбровой глубиной. Затем композиция темнеет: древесина, кожа и уд создают плотную фактуру. Образ — благовония, старое дерево и тёмная кожа.',
+     'Верх: орегано, перец, бергамот.\nСердце: ладан, опопонакс, амбра, лабданум.\nБаза: уд, кожа, сандал, пачули.', None),
+    ('Amouage Interlude Black Iris Man', 1350, 2700,
+     'Если Interlude Man — выразительный голос в большом зале, то Black Iris — тот же разговор, но тише и ближе. Зелень фиалкового листа и розмарин открывают композицию прохладно. Ирис добавляет пудровую, землистую мягкость, а смолы, ваниль и сандал создают бархатистое тепло. Кожано-удовая основа сохраняет тёмный характер.',
+     'Верх: лист фиалки, розмарин, бергамот.\nСердце: корень ириса, олибанум, мирра, амбра, лабданум, ваниль.\nБаза: кожа, уд, сандал, пачули, кедр.', None),
+    ('Clive Christian Jump Up And Kiss Me Hedonistic (2021)', 3000, 6000,
+     'Удовольствие здесь показано через контрасты: чёрная вишня встречается с зеленью мате, цитрусами и фиалковым листом. Затем история переходит в табачно-древесную сторону: ирис добавляет мягкость, папирус — сухую фактуру, кожа и лабданум затемняют фон. Ваниль и бобы тонка работают как тёплый свет. Образ — камерный вечер, тёмное дерево и вишнёвый акцент рядом с табаком.',
+     'Верх: чёрная вишня, лист фиалки, мате, нероли, бергамот, мускатный шалфей, мандарин, грейпфрут, лимон.\nСердце: табак, корень ириса, папирус, жасмин.\nБаза: амбра, кожа, бобы тонка, ваниль, мускус, сандал, кашемировое дерево, лабданум, ветивер, пачули, мох.', None),
+    ('Creed Aventus', 1400, 2800,
+     'Aventus интересен контрастом между светом и тенью. Сначала — цитрусы, яблоко и смородина, затем ананасовый акцент, придающий сочность. Но это не фруктовый коктейль: под свежестью постепенно обозначаются сухая древесина, пачули и берёзная грань. Мускус и мох собирают всё в сдержанный образ. Здесь уместнее представить хорошо скроенную рубашку, чем пляжный отдых.',
+     'Верх: бергамот, чёрная смородина, яблоко, лимон, розовый перец.\nСердце: ананас, пачули, марокканский жасмин.\nБаза: берёза, мускус, дубовый мох, кедр, Ambroxan.', 'aventus.jpg'),
+    ('Creed Absolu Aventus 2025', 1900, 3800,
+     'Знакомая фруктово-древесная идея получает пряную рамку. Ананас и смородина соседствуют с терпким грейпфрутом, розовый перец добавляет искристость. В сердце имбирь, кардамон и корица переводят свежесть в тёплое звучание. Ветивер и пачули дают сухое завершение. Сочные фрукты здесь словно подсвечены цитрусовой горечью и специями.',
+     'Верх: ананас, чёрная смородина, грейпфрут, розовый перец, лимон, бергамот.\nСердце: кардамон, корица, имбирь.\nБаза: ветивер, пачули.', None),
+    ('Essential Parfums Bois Imperial', 500, 1000,
+     'Древесина без тяжёлой резной рамы: много воздуха, зелени и чётких линий. Базилик напоминает свежерастёртые листья, перец тимут добавляет пряную искру, ветивер поддерживает сухую сторону. Akigalawood и Ambroxan формируют современную древесную конструкцию — скорее архитектуру из дерева и стекла, чем лесную открытку.',
+     'Ноты композиции, без деления на уровни: Akigalawood, древесные ноты, базилик, ветивер, перец тимут, Ambroxan, пачули.', None),
+    ('Ex Nihilo Blue Talisman', 1950, 3900,
+     'Сочная груша в прозрачном древесно-мускусном свете. Бергамот и мандарин добавляют яркость, имбирь не даёт фруктовому началу стать слишком мягким. Цветок апельсина раскрывает цветочную сторону, а древесные материалы удерживают композицию в современном ключе. Образ — светлая одежда, свободное движение и фруктовая свежесть без детской сладости.',
+     'Верх: груша, бергамот, мандарин, имбирь.\nСердце: цветок апельсина, Джордживуд.\nБаза: мускус, Амброфикс, Akigalawood, кедр.', None),
+    ('Ex Nihilo The Hedonist', 1300, 2600,
+     'Прогулка по деревянной террасе прохладным утром. Бергамот и имбирь задают бодрый пряно-цитрусовый тон, но дальше главным становится дерево. Кедр даёт сухую структуру, Akigalawood — пряную выразительность, ветивер добавляет глубину. Бобы тонка и мускус смягчают края. Образ — простая вещь из качественного материала, фактуру которой хочется рассматривать.',
+     'Верх: бергамот, имбирь.\nСердце: Akigalawood, кедр.\nБаза: ветивер, бобы тонка, мускус.', None),
+    ('Ex Nihilo The Hedonist Extrait', 1450, 2900,
+     'Древесная история становится более фактурной. Грейпфрут добавляет горчинку, имбирь — пряность, личи приносит фруктовый нюанс в контраст к кедру. В основе — древесно-амбровое направление, ветивер и пачули, смягчённые бобами тонка. Если обычный Hedonist напоминает воздушную террасу, Extrait — интерьер, где дерево стало главным материалом.',
+     'Верх: грейпфрут, имбирь, бергамот.\nСердце: Akigalawood, личи, кедр.\nБаза: Амбервуд, ветивер, бобы тонка, пачули.', None),
+    ('Jean Paul Gaultier Le Male Le Parfum', 700, 1400,
+     'Кардамон задаёт пряное вступление, после которого композиция словно меняет освещение: лаванда и ирис создают мягкую припудренную середину. Ванильная древесная база добавляет тепла. Представьте тёмную ткань, мягкий воротник и приглушённый свет. История не про суровость, а про спокойную привлекательность и тактильную мягкость.',
+     'Верх: кардамон.\nСердце: лаванда, ирис.\nБаза: ваниль, восточные ноты, древесные ноты.', None),
+    ('Jean Paul Gaultier Le Male Elixir', 700, 1400,
+     'Контраст прохладного начала и тёплого сладкого продолжения. Лаванда и мята дают зелёную свежесть, вскоре на первый план выходят ваниль, бензоин и медовая сторона. Табак и бобы тонка добавляют глубину. Это не конфета, а тёплый медово-ванильный аккорд с табачной подкладкой: золотистый, обволакивающий и настроенный на внимание.',
+     'Верх: лаванда, мята.\nСердце: ваниль, бензоин.\nБаза: мёд, бобы тонка, табак.', None),
+    ('Kilian Angels Share', 1500, 3000,
+     'Тёплое дерево, пряности и бокал коньяка рядом с десертом. Коньячный аккорд задаёт настроение, корица добавляет тепло, дуб удерживает композицию от превращения в чистую кондитерскую сладость. Ваниль и пралине создают уютную гурманскую основу. Выпечка здесь — образ: главное в композиции — соединение алкогольного, древесного и сладкого.',
+     'Верх: коньяк.\nСердце: корица, бобы тонка, дуб, Гедион.\nБаза: ваниль, пралине, сандал, засахаренный миндаль.', None),
+    ('Louis Vuitton Pacific Chill', 1800, 3600,
+     'Есть ароматы, которые пытаются произвести впечатление, а есть те, с которыми просто хорошо. Pacific Chill — про второе. Представьте неспешное утро в отпуске и холодный фруктовый коктейль с растёртой между пальцами мятой. Цитрусы, смородиновая кислинка и базилик встречаются с мягким абрикосовым акцентом. Затем звучание становится спокойнее, проявляется инжирный оттенок. Это история про лёгкую рубашку и удовольствие от простых вещей.',
+     'Верх: апельсин, цитрон, лимон, мята, чёрная смородина, кориандр.\nСердце: абрикос, базилик, майская роза, семена моркови.\nБаза: инжир, финики, амбретта.', 'pacific_chill.jpeg'),
+    ('Maison Crivelli Oud Maracuja', 2000, 4000,
+     'Тропическая фруктовость встречается с тёмной древесно-кожаной стороной. Маракуйя даёт кисло-сладкий акцент, шафран и роза усложняют его, а уд меняет настроение. Под сочной поверхностью — кожа, пачули и смолы. Ваниль и бензоин сглаживают контраст, не убирая его. Образ — экзотическая мякоть на тёмной коже: необычно и совсем не нейтрально.',
+     'Верх: маракуйя, фруктовые ноты, шафран, турецкая роза.\nСердце: уд, бензоин, индонезийские пачули.\nБаза: кожа, Akigalawood, амбра, ваниль, лабданум.', None),
+    ('Parfums de Marly Althair', 1150, 2300,
+     'Ваниль в окружении специй, древесины и света апельсинового цвета. Кардамон и корица делают начало тёплым, бергамот сохраняет контраст. В сердце раскрывается бурбонская ваниль со смолистым элеми. Пралине добавляет гурманскую сторону, гваяк и Ambroxan создают опору. Образ — мягкий трикотаж и тёплый десерт с собранной древесной основой.',
+     'Верх: корица, цветок апельсина, кардамон, бергамот.\nСердце: бурбонская ваниль, элеми.\nБаза: пралине, мускус, Ambroxan, бобы тонка, гваяк, засахаренный миндаль.', None),
+    ('Parfums de Marly Herod', 1500, 3000,
+     'Табачная тема в мягком пряно-ванильном обрамлении. Корица задаёт тепло, табачный лист хочется представить как сухой ароматный материал рядом со специями и смолами, а не сигаретный дым. Ладан и лабданум добавляют глубину, османтус — тонкий оттенок, ваниль смягчает древесную основу. Образ — спокойный вечер, тёмное дерево и табак с тёплой сладостью.',
+     'Основные ноты пирамиды — список базы сокращён.\nВерх: корица, пеппервуд.\nСердце: лист табака, ладан, османтус, лабданум.\nБаза: ваниль, Iso E Super, мускус, кедр, нагармота, ветивер.', None),
+    ('Tom Ford Grey Vetiver EDP', 900, 1800,
+     'Чёткие линии и сухая древесная элегантность. Грейпфрут даёт терпкую свежесть, шалфей — травяной акцент, пряности и корень ириса усложняют середину. Ветивер становится главным материалом, вокруг которого выстраиваются древесные и мшистые оттенки. Образ — серый костюм без лишних деталей. Для тех, кто предпочитает собранность выраженной сладости.',
+     'Верх: грейпфрут, цветок апельсина, шалфей.\nСердце: мускатный орех, корень ириса, красный перец.\nБаза: ветивер, древесные ноты, дубовый мох, амбра.', None),
+    ('Tom Ford Noir Extreme EDP', 900, 1800,
+     'Вечерняя пряность с кремовой, почти десертной серединой. Кардамон, мускатный орех и шафран открывают композицию, затем появляется аккорд кульфи — индийского замороженного молочного десерта. Цветы добавляют объём, ваниль и сандал делают завершение мягким. Образ — приглушённый ресторанный свет, пряный десерт и древесная отделка.',
+     'Верх: кардамон, мускатный орех, шафран, мандарин, нероли.\nСердце: кульфи, роза, мастиковое дерево, цветок апельсина, жасмин.\nБаза: ваниль, амбра, древесные ноты, сандал.', None),
+    ('Tom Ford Soleil Blanc EDP', 1100, 2200,
+     'Не столько запах моря, сколько образ кожи, согретой солнцем, белых цветов и кремового кокосового тепла. Фисташковый акцент и кардамон делают начало интереснее привычной тропической сладости. Тубероза, жасмин и иланг-иланг формируют цветочное сердце. Кокос, бензоин и бобы тонка создают мягкую основу. Образ — светлая ткань, тёплый воздух и отдых без суеты.',
+     'Верх: фисташки, бергамот, кардамон, розовый перец.\nСердце: тубероза, иланг-иланг, жасмин.\nБаза: кокос, амбра, бобы тонка, бензоин.', None),
+    ('Viktor & Rolf Spicebomb', 500, 1000,
+     'Специи, у которых есть и искра, и тёплое продолжение. Розовый перец и цитрусы создают яркий старт. Корица, шафран и паприка переводят композицию в горячую палитру, табак и кожа добавляют глубину, ветивер — сухую опору. Образ — пряное тепло под плотной курткой: выразительно, немного дерзко, но не сводится к одной сладкой корице.',
+     'Верх: розовый перец, элеми, бергамот, грейпфрут.\nСердце: корица, шафран, паприка.\nБаза: табак, кожа, ветивер.', None),
+]
+PERFUMES = {name: dict(price5=p5, price10=p10, description=description, notes=notes, photo=photo) for name, p5, p10, description, notes, photo in CATALOG}
+ALIASES = {'Tom Ford Grey Vetiver': 'Tom Ford Grey Vetiver EDP', 'Clive Christian Hedonistic': 'Clive Christian Jump Up And Kiss Me Hedonistic (2021)'}
 
 
-logging.basicConfig(
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    level=logging.INFO,
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+def money(value):
+    return f'{value:,}'.replace(',', ' ') + ' ₽'
 
 
 def main_menu():
-    return ReplyKeyboardMarkup(
-        [
-            ["🌸 Каталог", "🛒 Как купить"],
-            ["💬 Связаться", "📜 Правила"],
-        ],
-        resize_keyboard=True,
-    )
+    return ReplyKeyboardMarkup([['🌸 Каталог', '🛒 Как купить'], ['💬 Связаться', '📜 Правила']], resize_keyboard=True)
 
 
 def catalog_menu():
-    return ReplyKeyboardMarkup(
-        [
-            ["Creed Aventus"],
-            ["Louis Vuitton Pacific Chill"],
-            ["⬅️ Главное меню"],
-        ],
-        resize_keyboard=True,
-    )
+    return ReplyKeyboardMarkup([[name] for name in PERFUMES] + [['⬅️ Главное меню']], resize_keyboard=True, input_field_placeholder='Выберите аромат')
 
 
-AVENTUS_TEXT = (
-    "🌸 CREED AVENTUS\n\n"
-    "ЧЕМ ПАХНЕТ\n"
-    "Свежий фруктово-древесный аромат: цитрусы, "
-    "яблоко и чёрная смородина сочетаются "
-    "с ананасовым акцентом. Далее — сухая древесина, "
-    "мшистые и слегка дымные оттенки.\n\n"
-    "ПИРАМИДА ПО FRAGRANTICA\n"
-    "Верхние ноты: бергамот, чёрная смородина, "
-    "яблоко, лимон, розовый перец.\n"
-    "Сердце: ананас, пачули, марокканский жасмин.\n"
-    "База: берёза, мускус, дубовый мох, "
-    "кедр, Ambroxan.\n\n"
-    "ОБЪЁМЫ И ЦЕНЫ\n"
-    "280 ₽ за 1 мл\n"
-    "• 5 мл — 1 400 ₽\n"
-    "• 10 мл — 2 800 ₽\n\n"
-    "Атомайзер включён в стоимость.\n\n"
-    "Для заказа укажите аромат и объём:\n"
-    "@kodenn88\n"
-    "https://t.me/kodenn88"
-)
+def order_buttons(name, perfume):
+    buttons = []
+    for volume, key in [(5, 'price5'), (10, 'price10')]:
+        price = money(perfume[key])
+        text = f'Здравствуйте! Хочу заказать {name}, {volume} мл — {price}. Атомайзер включён. Подскажите наличие и способ получения.'
+        buttons.append(InlineKeyboardButton(f'{volume} мл · {price}', url=f'https://t.me/{SELLER}?text={quote(text, safe="")}'))
+    return InlineKeyboardMarkup([buttons])
 
 
-PACIFIC_CHILL_TEXT = (
-    "🌸 LOUIS VUITTON PACIFIC CHILL\n\n"
-    "На распив в объёмах 5 мл и 10 мл.\n\n"
-    "Есть ароматы, которые пытаются произвести впечатление, "
-    "а есть те, с которыми просто хорошо. "
-    "Pacific Chill — про второе. Представьте неспешное утро "
-    "в отпуске: впереди свободный день, а в руках — холодный "
-    "фруктовый коктейль с растёртой между пальцами мятой.\n\n"
-    "В его характере главное — сочность. Яркие цитрусы "
-    "с лёгкой горчинкой цедры встречаются с прохладной мятой "
-    "и смородиновой кислинкой. Но самое интересное здесь — "
-    "абрикос: мягкий, спелый, с ощущением бархатистой мякоти. "
-    "Базилик добавляет зелёную пряность и не даёт фруктовой "
-    "сладости превратить композицию в обычный компот. "
-    "Постепенно звучание становится спокойнее и мягче, "
-    "проявляется инжирный оттенок. Такое прочтение опирается "
-    "на заявленную пирамиду аромата.\n\n"
-    "Это не строгий парфюм под костюм, а история про "
-    "расслабленность, лёгкую рубашку и удовольствие "
-    "от простых вещей. Для тех, кто любит свежесть, "
-    "но хочет получить больше, чем просто лимон "
-    "и чистоту после душа.\n\n"
-    "Унисекс — для мужчин и женщин.\n\n"
-    "💰 СТОИМОСТЬ\n"
-    "• 5 мл — 1 800 ₽\n"
-    "• 10 мл — 3 600 ₽\n\n"
-    "Атомайзер включён в цену.\n\n"
-    "Для заказа укажите аромат и объём:\n"
-    "@kodenn88\n"
-    "https://t.me/kodenn88"
-)
+async def send_catalog(update, context):
+    message, chat = update.effective_message, update.effective_chat
+    if message is None or chat is None:
+        return
+    if chat.type != 'private':
+        bot = await context.bot.get_me()
+        await message.reply_text('🌸 Каталог «Нота 59»\n\nВыбирайте ароматы в личном чате с ботом.', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('🌸 Открыть каталог', url=f'https://t.me/{bot.username}?start=catalog')]]))
+        return
+    await message.reply_text(f'🌸 Каталог «Нота 59»\n\nАроматов: {len(PERFUMES)}\nОбъёмы 5 и 10 мл. Атомайзер включён.\n\nВыберите аромат:', reply_markup=catalog_menu())
 
 
-PERFUMES = {
-    "Creed Aventus": {
-        "photo": "aventus.jpg",
-        "text": AVENTUS_TEXT,
-    },
-    "Louis Vuitton Pacific Chill": {
-        "photo": "pacific_chill.jpeg",
-        "text": PACIFIC_CHILL_TEXT,
-    },
-}
+async def start(update, context):
+    message, chat = update.effective_message, update.effective_chat
+    if message is None or chat is None:
+        return
+    if chat.type != 'private' or (context.args and context.args[0] == 'catalog'):
+        await send_catalog(update, context)
+        return
+    await message.reply_text('Добро пожаловать в «Нота 59»! 🌸\n\nПарфюмерия на распив.\nВыберите нужный раздел на клавиатуре ниже.', reply_markup=main_menu())
+
+
+async def show_perfume(message, name):
+    perfume = PERFUMES[name]
+    if perfume['photo']:
+        path = os.path.join(BASE_DIR, perfume['photo'])
+        if os.path.isfile(path):
+            try:
+                with open(path, 'rb') as photo:
+                    await message.reply_photo(photo=photo, caption=name)
+            except TelegramError:
+                logging.exception('Не удалось отправить фото %s', name)
+        else:
+            logging.warning('Фото не найдено: %s', path)
+    text = (f'🌸 {name}\n\nОПИСАНИЕ\n{perfume["description"]}\n\nПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{perfume["notes"]}\n\nОБЪЁМЫ И ЦЕНЫ\n• 5 мл — {money(perfume["price5"])}\n• 10 мл — {money(perfume["price10"])}\n\nАтомайзер включён в стоимость.\n\nНажмите нужный объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и способ получения.\n@{SELLER}')
+    await message.reply_text(text, reply_markup=order_buttons(name, perfume))
 
 
 SECTIONS = {
-    "🛒 Как купить": (
-        "🛒 Как купить\n\n"
-        "Для заказа обратитесь к администратору группы «Нота 59».\n"
-        "Укажите название аромата и желаемый объём.\n\n"
-        "До оплаты уточните наличие, стоимость и способ получения."
-    ),
-    "💬 Связаться": (
-        "💬 Администратор «Нота 59»\n\n"
-        "По вопросам наличия ароматов и оформления заказа:\n"
-        "@kodenn88\n\n"
-        "Написать лично: https://t.me/kodenn88"
-    ),
-    "📜 Правила": (
-        "📜 Информация\n\n"
-        "Условия заказа, оплаты и получения уточняйте "
-        "у администратора до покупки.\n\n"
-        "Полные правила группы добавим в этот раздел позже."
-    ),
+    '🛒 Как купить': '🛒 Как купить\n\nОткройте каталог, выберите аромат и нажмите кнопку 5 мл или 10 мл. Откроется чат продавца с подготовленным сообщением — отправьте его самостоятельно.\n\nДо оплаты уточните наличие, стоимость и способ получения.\nАтомайзер включён.\n@kodenn88',
+    '💬 Связаться': '💬 Администратор «Нота 59»\n\nПо вопросам наличия ароматов и оформления заказа:\n@kodenn88\nhttps://t.me/kodenn88',
+    '📜 Правила': '📜 Информация\n\nУсловия заказа, оплаты и получения уточняйте у администратора до покупки.\n\nПолные правила группы добавим в этот раздел позже.',
 }
 
 
-async def start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+async def handle_message(update, context):
     message = update.effective_message
     if message is None:
         return
+    text = message.text
+    if text == '🌸 Каталог':
+        await send_catalog(update, context)
+    elif text == '⬅️ Главное меню':
+        await message.reply_text('Выберите нужный раздел:', reply_markup=main_menu())
+    elif ALIASES.get(text, text) in PERFUMES:
+        await show_perfume(message, ALIASES.get(text, text))
+    else:
+        await message.reply_text(SECTIONS.get(text, 'Выберите раздел на клавиатуре ниже 🙂\nЧтобы открыть меню, отправьте /start.'), reply_markup=main_menu())
 
-    await message.reply_text(
-        "Добро пожаловать в «Нота 59»! 🌸\n\n"
-        "Парфюмерия на распив.\n"
-        "Выберите нужный раздел на клавиатуре ниже.",
-        reply_markup=main_menu(),
-    )
+
+async def group_rules(update, context):
+    if update.effective_message:
+        await update.effective_message.reply_text('📜 Информация группы «Нота 59»\n\nЗдесь обсуждаем парфюмерию и распивы.\n\nНаличие, стоимость, оплату и получение уточняйте у администратора до покупки.\n\nАдминистратор: @kodenn88\nhttps://t.me/kodenn88')
 
 
-async def handle_message(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+async def welcome_members(update, context):
     message = update.effective_message
     if message is None:
         return
-
-    user_text = message.text
-
-    if user_text == "🌸 Каталог":
-        await message.reply_text(
-            "🌸 Каталог «Нота 59»\n\n"
-            "Выберите аромат:",
-            reply_markup=catalog_menu(),
-        )
-        return
-
-    if user_text == "⬅️ Главное меню":
-        await message.reply_text(
-            "Выберите нужный раздел:",
-            reply_markup=main_menu(),
-        )
-        return
-
-    perfume = PERFUMES.get(user_text)
-
-    if perfume is not None:
-        photo_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            perfume["photo"],
-        )
-
-        if os.path.isfile(photo_path):
-            try:
-                with open(photo_path, "rb") as photo:
-                    await message.reply_photo(
-                        photo=photo,
-                        caption=user_text,
-                        reply_markup=catalog_menu(),
-                    )
-            except TelegramError:
-                logging.exception(
-                    "Не удалось отправить фото аромата %s",
-                    user_text,
-                )
-        else:
-            logging.warning(
-                "Файл фотографии не найден: %s",
-                photo_path,
-            )
-
-        await message.reply_text(
-            perfume["text"],
-            reply_markup=catalog_menu(),
-        )
-        return
-
-    text = SECTIONS.get(
-        user_text,
-        "Выберите раздел на клавиатуре ниже 🙂\n"
-        "Чтобы открыть меню, отправьте /start.",
-    )
-
-    await message.reply_text(
-        text,
-        reply_markup=main_menu(),
-    )
-
-
-async def group_rules(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    message = update.effective_message
-    if message is None:
-        return
-
-    await message.reply_text(
-        "📜 Информация группы «Нота 59»\n\n"
-        "Здесь обсуждаем парфюмерию и распивы.\n\n"
-        "Наличие, стоимость, оплату и получение "
-        "уточняйте у администратора до покупки.\n\n"
-        "Администратор: @kodenn88\n"
-        "https://t.me/kodenn88"
-    )
-
-
-async def welcome_members(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    message = update.effective_message
-    if message is None:
-        return
-
     for member in message.new_chat_members:
-        if member.is_bot:
-            continue
-
-        await message.reply_text(
-            f"🌸 {member.first_name}, "
-            "добро пожаловать в «Нота 59»!\n\n"
-            "Рады видеть вас в нашем "
-            "парфюмерном сообществе.\n\n"
-            "Информация группы: /rules\n"
-            "По вопросам заказов: @kodenn88"
-        )
+        if not member.is_bot:
+            await message.reply_text(f'🌸 {member.first_name}, добро пожаловать в «Нота 59»!\n\nРады видеть вас в нашем парфюмерном сообществе.\n\nКаталог: /catalog\nИнформация группы: /rules\nПо вопросам заказов: @kodenn88')
 
 
-async def ban_spammer(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    message = update.effective_message
-    chat = update.effective_chat
-    user = update.effective_user
-
-    if message is None or chat is None:
+async def ban_spammer(update, context):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if message is None or chat is None or chat.type not in ('group', 'supergroup'):
         return
-
-    if chat.type not in ("group", "supergroup"):
-        return
-
     if message.sender_chat is not None or user is None:
-        await message.reply_text(
-            "Отправьте команду от своего личного аккаунта, "
-            "не анонимно и не от имени канала."
-        )
+        await message.reply_text('Отправьте команду от своего личного аккаунта, не анонимно и не от имени канала.')
         return
-
     try:
-        moderator = await context.bot.get_chat_member(
-            chat_id=chat.id,
-            user_id=user.id,
-        )
-
-        allowed = (
-            moderator.status == "creator"
-            or (
-                moderator.status == "administrator"
-                and moderator.can_restrict_members
-            )
-        )
-
-        if not allowed:
-            await message.reply_text(
-                "Команда доступна только владельцу группы "
-                "и администраторам с правом блокировки."
-            )
+        moderator = await context.bot.get_chat_member(chat.id, user.id)
+        if not (moderator.status == 'creator' or (moderator.status == 'administrator' and moderator.can_restrict_members)):
+            await message.reply_text('Команда доступна только владельцу группы и администраторам с правом блокировки.')
             return
-
         replied = message.reply_to_message
-
         if replied is None:
-            await message.reply_text(
-                "Ответьте на сообщение спамера командой /ban.\n"
-                "Внимание: блокировка бессрочная."
-            )
+            await message.reply_text('Ответьте на сообщение спамера командой /ban.\nВнимание: блокировка бессрочная.')
             return
-
         if replied.sender_chat is not None or replied.from_user is None:
-            await message.reply_text(
-                "Это сообщение отправлено от имени канала "
-                "или анонимного администратора. "
-                "Эта команда блокирует только пользователей."
-            )
+            await message.reply_text('Эта команда блокирует только пользователей, не каналы или анонимных администраторов.')
             return
-
         target = replied.from_user
-
         if target.id in (user.id, context.bot.id):
-            await message.reply_text(
-                "Нельзя заблокировать себя или этого бота."
-            )
+            await message.reply_text('Нельзя заблокировать себя или этого бота.')
             return
-
-        target_member = await context.bot.get_chat_member(
-            chat_id=chat.id,
-            user_id=target.id,
-        )
-
-        if target_member.status in ("creator", "administrator"):
-            await message.reply_text(
-                "Владельца группы и администраторов "
-                "эта команда не блокирует."
-            )
+        target_member = await context.bot.get_chat_member(chat.id, target.id)
+        if target_member.status in ('creator', 'administrator'):
+            await message.reply_text('Владельца группы и администраторов эта команда не блокирует.')
             return
-
-        bot_member = await context.bot.get_chat_member(
-            chat_id=chat.id,
-            user_id=context.bot.id,
-        )
-
-        if (
-            bot_member.status != "administrator"
-            or not bot_member.can_restrict_members
-        ):
-            await message.reply_text(
-                "Выдайте мне права администратора "
-                "с разрешением блокировать пользователей."
-            )
+        bot_member = await context.bot.get_chat_member(chat.id, context.bot.id)
+        if bot_member.status != 'administrator' or not bot_member.can_restrict_members:
+            await message.reply_text('Выдайте мне права администратора с разрешением блокировать пользователей.')
             return
-
-        await context.bot.ban_chat_member(
-            chat_id=chat.id,
-            user_id=target.id,
-        )
-
+        await context.bot.ban_chat_member(chat_id=chat.id, user_id=target.id)
     except TelegramError:
-        logging.exception("Не удалось выполнить команду /ban")
-        await message.reply_text(
-            "Не удалось выполнить блокировку. "
-            "Проверьте права бота и логи BotHost."
-        )
+        logging.exception('Не удалось выполнить команду /ban')
+        await message.reply_text('Не удалось выполнить блокировку. Проверьте права бота и логи BotHost.')
         return
+    await message.reply_text(f'🚫 Пользователь {target.full_name} заблокирован.\nID: {target.id}\n\nБлокировка бессрочная. Снять её можно в настройках группы.')
 
-    await message.reply_text(
-        f"🚫 Пользователь {target.full_name} заблокирован.\n"
-        f"ID: {target.id}\n\n"
-        "Блокировка бессрочная. "
-        "Снять её можно в настройках группы."
-    )
+
+async def error_handler(update, context):
+    error = context.error
+    if error is not None:
+        logging.error('Необработанная ошибка бота', exc_info=(type(error), error, error.__traceback__))
 
 
 def main():
-    token = os.environ.get("BOT_TOKEN", "").strip()
-
+    token = os.environ.get('BOT_TOKEN', '').strip()
     if not token:
-        raise RuntimeError(
-            "Добавьте переменную BOT_TOKEN в настройках хостинга."
-        )
-
+        raise RuntimeError('Добавьте переменную BOT_TOKEN в настройках хостинга.')
     application = Application.builder().token(token).build()
-
-    application.add_handler(
-        CommandHandler(
-            "ban",
-            ban_spammer,
-            filters=filters.ChatType.GROUPS,
-        )
-    )
-
-    application.add_handler(
-        CommandHandler(
-            "rules",
-            group_rules,
-            filters=filters.ChatType.GROUPS,
-        )
-    )
-
-    application.add_handler(
-        MessageHandler(
-            filters.StatusUpdate.NEW_CHAT_MEMBERS
-            & filters.ChatType.GROUPS,
-            welcome_members,
-        )
-    )
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("menu", start))
-
-    application.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
-            handle_message,
-        )
-    )
-
+    application.add_handler(CommandHandler('ban', ban_spammer, filters=filters.ChatType.GROUPS))
+    application.add_handler(CommandHandler('rules', group_rules, filters=filters.ChatType.GROUPS))
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS & filters.ChatType.GROUPS, welcome_members))
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('menu', start))
+    application.add_handler(CommandHandler('catalog', send_catalog))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, handle_message))
+    application.add_error_handler(error_handler)
     application.run_polling()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
