@@ -6,7 +6,8 @@ import unicodedata
 from urllib.parse import quote, urlsplit
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, MessageEntity
 from telegram.error import TelegramError
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ApplicationHandlerStop, ChatMemberHandler
+import report
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.INFO)
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -242,7 +243,7 @@ async def handle_message(update, context):
 
 async def group_rules(update, context):
     if update.effective_message:
-        await update.effective_message.reply_text('📜 Информация группы «Нота 59»\n\nЗдесь обсуждаем парфюмерию и распивы.\n\nНаличие, стоимость, оплату и получение уточняйте у администратора до покупки.\n\nАдминистратор: @kodenn88\nhttps://t.me/kodenn88')
+        await update.effective_message.reply_text('📜 Информация группы «Нота 59»\n\nЗдесь обсуждаем парфюмерию и распивы.\n\nНаличие, стоимость, оплату и получение уточняйте у администратора до покупки.\n\nАдминистратор: @kodenn88\nhttps://t.me/kodenn88', reply_markup=report.report_keyboard())
 
 
 async def welcome_members(update, context):
@@ -251,7 +252,7 @@ async def welcome_members(update, context):
         return
     for member in message.new_chat_members:
         if not member.is_bot:
-            await message.reply_text(f'🌸 {member.first_name}, добро пожаловать в «Нота 59»!\n\nРады видеть вас в нашем парфюмерном сообществе.\n\nКаталог: /catalog\nИнформация группы: /rules\nПо вопросам заказов: @kodenn88')
+            await message.reply_text(f'🌸 {member.first_name}, добро пожаловать в «Нота 59»!\n\nРады видеть вас в нашем парфюмерном сообществе.\n\nКаталог: /catalog\nИнформация группы: /rules\nПо вопросам заказов: @kodenn88', reply_markup=report.report_keyboard())
 
 
 async def ban_spammer(update, context):
@@ -366,6 +367,23 @@ async def check_security(application):
     await security_notice(application.bot, data, data['security_status'], force=True)
 
 
+async def my_chat_member_update(update, context):
+    change = update.my_chat_member
+    chat = update.effective_chat
+    if change is None or chat is None or chat.id != PROTECTED_GROUP_ID:
+        return
+    new_status = change.new_chat_member.status
+    if new_status not in ('member', 'administrator'):
+        text = f'Бот больше не участник группы {chat.id} (статус: {new_status}). Фильтр ссылок и /report могут не работать. Проверьте группу и добавьте бота заново.'
+    elif new_status != 'administrator' or not change.new_chat_member.can_delete_messages:
+        text = f'Бот в группе {chat.id}, но не имеет прав администратора с удалением сообщений. Фильтр ссылок выключен.'
+    else:
+        text = f'Бот имеет нужные права в группе {chat.id}. Фильтр ссылок включён.'
+    logging.info('%s', text)
+    await security_notice(context.bot, context.bot_data, text, force=True)
+    await check_security(context.application)
+
+
 async def security_command(update, context):
     m, u = update.effective_message, update.effective_user
     if m is None or u is None or m.sender_chat is not None or u.id != SECURITY_OWNER_ID:
@@ -441,9 +459,9 @@ def main():
         raise RuntimeError('Добавьте переменную BOT_TOKEN в настройках хостинга.')
     application = Application.builder().token(token).post_init(check_security).build()
     application.add_handler(MessageHandler(filters.ChatType.GROUPS & (filters.TEXT | filters.CAPTION), group_link_filter), group=-1)
+    application.add_handler(ChatMemberHandler(my_chat_member_update, ChatMemberHandler.MY_CHAT_MEMBER))
     application.add_handler(CommandHandler('security', security_command))
     application.add_handler(CommandHandler('security_ids', security_ids))
-    import report
     report.register(application)
     application.add_handler(CommandHandler('ban', ban_spammer, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler('rules', group_rules, filters=filters.ChatType.GROUPS))
@@ -452,7 +470,7 @@ def main():
     application.add_handler(CommandHandler('catalog', send_catalog))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, handle_message))
     application.add_error_handler(error_handler)
-    application.run_polling(allowed_updates=['message', 'edited_message'])
+    application.run_polling(allowed_updates=['message', 'edited_message', 'my_chat_member', 'callback_query'])
 
 
 if __name__ == '__main__':

@@ -1,8 +1,36 @@
 import logging
+import time
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
+
+REPORT_LIMIT = 3
+REPORT_WINDOW = 600
+
+
+def report_keyboard():
+    return InlineKeyboardMarkup([[InlineKeyboardButton('🚨 Пожаловаться', callback_data='report_help')]])
+
+
+async def report_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query is None:
+        return
+    await query.answer()
+    await query.message.reply_text('🚨 Чтобы пожаловаться, ответьте на подозрительное сообщение командой /report.\n\nЖалоба придёт администратору. Бот ничего не удаляет и не наказывает автоматически.')
+
+
+def _allowed(context, user_id):
+    log = context.bot_data.setdefault('report_log', {})
+    now = time.monotonic()
+    stamps = [stamp for stamp in log.get(user_id, []) if now - stamp <= REPORT_WINDOW]
+    if len(stamps) >= REPORT_LIMIT:
+        log[user_id] = stamps
+        return False
+    stamps.append(now)
+    log[user_id] = stamps
+    return True
 
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -18,6 +46,9 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if message.sender_chat is not None or user is None:
         await message.reply_text('Отправьте /report от своего личного аккаунта, не анонимно и не от имени канала.')
+        return
+    if not _allowed(context, user.id):
+        await message.reply_text('Слишком много жалоб за последние 10 минут. Попробуйте позже.')
         return
 
     replied = message.reply_to_message
@@ -58,6 +89,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def register(application):
-    from telegram.ext import CommandHandler
+    from telegram.ext import CommandHandler, CallbackQueryHandler
 
     application.add_handler(CommandHandler('report', report_command))
+    application.add_handler(CallbackQueryHandler(report_help, pattern='^report_help$'))
