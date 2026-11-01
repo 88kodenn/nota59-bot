@@ -9,6 +9,7 @@ from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ApplicationHandlerStop, ChatMemberHandler
 import report
 import security_log as slog
+import fragrantica_links
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.INFO)
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -161,7 +162,8 @@ def order_buttons(name, perfume):
         price = money(perfume[key])
         text = f'Здравствуйте! Хочу заказать {name}, {volume} мл — {price}. Атомайзер включён. Подскажите наличие и способ получения.'
         buttons.append(InlineKeyboardButton(f'{volume} мл · {price}', url=f'https://t.me/{SELLER}?text={quote(text, safe="")}'))
-    fragrantica_row = [InlineKeyboardButton('Смотреть на Fragrantica', url=f'https://www.fragrantica.com/search/?query={quote(name)}')]
+    frag_url = fragrantica_links.FRAGRANTICA.get(name) or f'https://www.fragrantica.ru/search/?query={quote(name)}'
+    fragrantica_row = [InlineKeyboardButton('Смотреть на Fragrantica', url=frag_url)]
     return InlineKeyboardMarkup([buttons, fragrantica_row])
 
 
