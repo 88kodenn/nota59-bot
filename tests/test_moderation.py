@@ -15,6 +15,7 @@ def make_warn():
     message.reply_to_message = SimpleNamespace(
         from_user=SimpleNamespace(id=333, full_name='Нарушитель'),
         message_id=777,
+        sender_chat=None,
     )
     chat = SimpleNamespace(id=-5479944910, type='supergroup')
     user = SimpleNamespace(id=222, full_name='Админ')
