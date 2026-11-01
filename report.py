@@ -5,6 +5,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
+import security_log as slog
+
 REPORT_LIMIT = 3
 REPORT_WINDOW = 600
 
@@ -83,6 +85,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.warning('Уведомление о жалобе не доставлено; откройте личный чат бота и нажмите /start')
 
     if delivered:
+        slog.log_event('report', chat.id, user.id, f'Жалоба на {reported_id}; сообщение {replied.message_id}')
         await message.reply_text('✅ Жалоба отправлена администратору. Спасибо!')
     else:
         await message.reply_text('Жалоба принята, но уведомление владельцу пока не доставлено. Откройте личный чат с ботом и нажмите /start.')

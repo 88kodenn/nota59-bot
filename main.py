@@ -8,6 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMa
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ApplicationHandlerStop, ChatMemberHandler
 import report
+import security_log as slog
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.INFO)
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -255,12 +256,27 @@ async def welcome_members(update, context):
             await message.reply_text(f'🌸 {member.first_name}, добро пожаловать в «Нота 59»!\n\nРады видеть вас в нашем парфюмерном сообществе.\n\nКаталог: /catalog\nИнформация группы: /rules\nПо вопросам заказов: @kodenn88', reply_markup=report.report_keyboard())
 
 
+def command_allowed(context, user_id, key, limit, window):
+    data = context.bot_data.setdefault('command_log', {})
+    now = time.monotonic()
+    stamps = [stamp for stamp in data.get((key, user_id), []) if now - stamp <= window]
+    if len(stamps) >= limit:
+        data[(key, user_id)] = stamps
+        return False
+    stamps.append(now)
+    data[(key, user_id)] = stamps
+    return True
+
+
 async def ban_spammer(update, context):
     message, chat, user = update.effective_message, update.effective_chat, update.effective_user
     if message is None or chat is None or chat.type not in ('group', 'supergroup'):
         return
     if message.sender_chat is not None or user is None:
         await message.reply_text('Отправьте команду от своего личного аккаунта, не анонимно и не от имени канала.')
+        return
+    if not command_allowed(context, user.id, 'ban', 3, 60):
+        await message.reply_text('Слишком много команд /ban за минуту. Попробуйте позже.')
         return
     try:
         moderator = await context.bot.get_chat_member(chat.id, user.id)
@@ -291,7 +307,48 @@ async def ban_spammer(update, context):
         logging.exception('Не удалось выполнить команду /ban')
         await message.reply_text('Не удалось выполнить блокировку. Проверьте права бота и логи BotHost.')
         return
+    slog.log_event('ban', chat.id, target.id, f'Заблокирован администратором {user.id}')
     await message.reply_text(f'🚫 Пользователь {target.full_name} заблокирован.\nID: {target.id}\n\nБлокировка бессрочная. Снять её можно в настройках группы.')
+
+
+async def warn_spammer(update, context):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if message is None or chat is None or chat.type not in ('group', 'supergroup'):
+        return
+    if message.sender_chat is not None or user is None:
+        await message.reply_text('Отправьте команду от своего личного аккаунта, не анонимно и не от имени канала.')
+        return
+    if not command_allowed(context, user.id, 'warn', 5, 60):
+        await message.reply_text('Слишком много команд /warn за минуту. Попробуйте позже.')
+        return
+    try:
+        moderator = await context.bot.get_chat_member(chat.id, user.id)
+        if not (moderator.status == 'creator' or (moderator.status == 'administrator' and moderator.can_restrict_members)):
+            await message.reply_text('Команда доступна только владельцу группы и администраторам с правом блокировки.')
+            return
+        replied = message.reply_to_message
+        if replied is None:
+            await message.reply_text('Ответьте на сообщение участника командой /warn.')
+            return
+        if replied.sender_chat is not None or replied.from_user is None:
+            await message.reply_text('Предупреждать можно только пользователей, не каналы или анонимных администраторов.')
+            return
+        target = replied.from_user
+        if target.id in (user.id, context.bot.id):
+            await message.reply_text('Нельзя предупредить себя или этого бота.')
+            return
+        target_member = await context.bot.get_chat_member(chat.id, target.id)
+        if target_member.status in ('creator', 'administrator'):
+            await message.reply_text('Владельца группы и администраторов эта команда не предупреждает.')
+            return
+    except TelegramError:
+        logging.exception('Не удалось выполнить команду /warn')
+        await message.reply_text('Не удалось выполнить предупреждение. Проверьте права бота и логи BotHost.')
+        return
+    count = slog.count_kind_for_user('warn', target.id) + 1
+    reason = ' '.join(context.args) if context.args else 'нарушение правил группы'
+    slog.log_event('warn', chat.id, target.id, f'Предупреждение {count} от администратора {user.id}: {reason}')
+    await message.reply_text(f'⚠️ {target.full_name}, предупреждение {count}.\nПричина: {reason}.\n\nАвтоматические муты и баны не применяются.')
 
 
 PROTECTED_GROUP_ID = -5479944910
@@ -364,6 +421,7 @@ async def check_security(application):
     except (TelegramError, ValueError):
         data['security_status'] = f'Фильтр выключен: Telegram не подтвердил доступ к группе {PROTECTED_GROUP_ID}. Проверьте ID и членство бота. ID не изменён автоматически.'
     logging.info('%s', data['security_status'])
+    slog.log_event('security_status', PROTECTED_GROUP_ID, None, data['security_status'])
     await security_notice(application.bot, data, data['security_status'], force=True)
 
 
@@ -380,6 +438,7 @@ async def my_chat_member_update(update, context):
     else:
         text = f'Бот имеет нужные права в группе {chat.id}. Фильтр ссылок включён.'
     logging.info('%s', text)
+    slog.log_event('bot_rights', chat.id, None, text)
     await security_notice(context.bot, context.bot_data, text, force=True)
     await check_security(context.application)
 
@@ -414,6 +473,7 @@ async def group_link_filter(update, context):
         if m.sender_chat.id == chat.id:
             return
         actor = f'чат/канал {m.sender_chat.id}'
+        actor_id = m.sender_chat.id
     else:
         user = m.from_user
         if user is None or user.id == context.bot.id:
@@ -426,6 +486,7 @@ async def group_link_filter(update, context):
         if member.status in ('creator', 'administrator'):
             return
         actor = f'пользователь {user.id}'
+        actor_id = user.id
     recent = context.bot_data.setdefault('link_filter_recent', {})
     now = time.monotonic()
     for key, stamp in list(recent.items()):
@@ -443,6 +504,7 @@ async def group_link_filter(update, context):
         recent.pop(next(iter(recent)), None)
     recent[event] = now
     logging.info('Фильтр удалил сообщение: chat_id=%s message_id=%s', chat.id, m.message_id)
+    slog.log_event('link_deleted', chat.id, actor_id, f'Сообщение {m.message_id}; отправитель: {actor}; ссылки: {", ".join(sorted(links))[:500]}')
     await security_notice(context.bot, context.bot_data, f'Удалено сообщение {m.message_id} в группе {chat.id}. Отправитель: {actor}. Причина: ссылка вне разрешённого списка. Мут и бан не применялись.')
     raise ApplicationHandlerStop
 
@@ -457,12 +519,14 @@ def main():
     token = os.environ.get('BOT_TOKEN', '').strip()
     if not token:
         raise RuntimeError('Добавьте переменную BOT_TOKEN в настройках хостинга.')
+    slog.init()
     application = Application.builder().token(token).post_init(check_security).build()
     application.add_handler(MessageHandler(filters.ChatType.GROUPS & (filters.TEXT | filters.CAPTION), group_link_filter), group=-1)
     application.add_handler(ChatMemberHandler(my_chat_member_update, ChatMemberHandler.MY_CHAT_MEMBER))
     application.add_handler(CommandHandler('security', security_command))
     application.add_handler(CommandHandler('security_ids', security_ids))
     report.register(application)
+    application.add_handler(CommandHandler('warn', warn_spammer, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler('ban', ban_spammer, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler('rules', group_rules, filters=filters.ChatType.GROUPS))
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS & filters.ChatType.GROUPS, welcome_members))
