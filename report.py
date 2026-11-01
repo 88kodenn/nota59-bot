@@ -4,11 +4,10 @@ from telegram import Update
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
-import main as bot_main
-
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает /report: уведомляет владельца, не удаляет и не наказывает."""
+    import main as bot_main
+
     message = update.effective_message
     chat = update.effective_chat
     user = update.effective_user
@@ -59,7 +58,6 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def register(application):
-    """Подключает обработчик /report к существующему приложению."""
     from telegram.ext import CommandHandler
 
     application.add_handler(CommandHandler('report', report_command))
