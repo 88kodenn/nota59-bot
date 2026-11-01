@@ -99,8 +99,8 @@ PERFUMES = {
         "photo": "aventus.jpg",
         "text": SECTIONS["🌸 Каталог"],
     },
-    "Louis Vuitton Pacific Chill": {
-        "photo": "pacific_chill.jpg",
+        "Louis Vuitton Pacific Chill": {
+        "photo": "pacific_chill.jpeg",
         "text": PACIFIC_CHILL_TEXT,
     },
 }
