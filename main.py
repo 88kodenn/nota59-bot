@@ -1,7 +1,8 @@
 import logging
 import os
+import re
+import unicodedata
 from urllib.parse import quote
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
@@ -10,9 +11,6 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', le
 logging.getLogger('httpx').setLevel(logging.WARNING)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SELLER = 'kodenn88'
-
-# Цены — только за готовые объёмы. Описания авторские, ноты по Fragrantica.
-# Образные сравнения не являются дополнительными нотами.
 CATALOG = [
     ('Amouage Interlude Man', 1350, 2700,
      'Есть ароматы для знакомства, а есть — для появления. Пряный травяной старт здесь словно приоткрывает дверь в помещение, где тлеют благовония. Орегано и перец встречаются с густым ладаном, тёплыми смолами и амбровой глубиной. Затем композиция темнеет: древесина, кожа и уд создают плотную фактуру. Образ — благовония, старое дерево и тёмная кожа.',
@@ -48,7 +46,7 @@ CATALOG = [
      'Контраст прохладного начала и тёплого сладкого продолжения. Лаванда и мята дают зелёную свежесть, вскоре на первый план выходят ваниль, бензоин и медовая сторона. Табак и бобы тонка добавляют глубину. Это не конфета, а тёплый медово-ванильный аккорд с табачной подкладкой: золотистый, обволакивающий и настроенный на внимание.',
      'Верх: лаванда, мята.\nСердце: ваниль, бензоин.\nБаза: мёд, бобы тонка, табак.', None),
     ('Kilian Angels Share', 1500, 3000,
-     'Тёплое дерево, пряности и бокал коньяка рядом с десертом. Коньячный аккорд задаёт настроение, корица добавляет тепло, дуб удерживает композицию от превращения в чистую кондитерскую сладость. Ваниль и пралине создают уютную гурманскую основу. Выпечка здесь — образ: главное в композиции — соединение алкогольного, древесного и сладкого.',
+     'Тёплое дерево, пряности и бокал коньяка рядом с десертом. Коньячный аккорд задаёт настроение, корица добавляет тепло, дуб удерживает композицию от превращения в чистую кондитерскую сладость. Ваниль и пралине создают уютную гурманскую основу. Выпечка здесь — образ: главное в композицииции — соединение алкогольного, древесного и сладкого.',
      'Верх: коньяк.\nСердце: корица, бобы тонка, дуб, Гедион.\nБаза: ваниль, пралине, сандал, засахаренный миндаль.', None),
     ('Louis Vuitton Pacific Chill', 1800, 3600,
      'Есть ароматы, которые пытаются произвести впечатление, а есть те, с которыми просто хорошо. Pacific Chill — про второе. Представьте неспешное утро в отпуске и холодный фруктовый коктейль с растёртой между пальцами мятой. Цитрусы, смородиновая кислинка и базилик встречаются с мягким абрикосовым акцентом. Затем звучание становится спокойнее, проявляется инжирный оттенок. Это история про лёгкую рубашку и удовольствие от простых вещей.',
@@ -77,6 +75,42 @@ CATALOG = [
 ]
 PERFUMES = {name: dict(price5=p5, price10=p10, description=description, notes=notes, photo=photo) for name, p5, p10, description, notes, photo in CATALOG}
 ALIASES = {'Tom Ford Grey Vetiver': 'Tom Ford Grey Vetiver EDP', 'Clive Christian Hedonistic': 'Clive Christian Jump Up And Kiss Me Hedonistic (2021)'}
+BRAND_WORDS = {
+    'Amouage': 'амуаж амуаж амуаже', 'Clive Christian': 'клайв кристиан',
+    'Creed': 'крид', 'Essential Parfums': 'эссеншиал эссеншл парфюмс',
+    'Ex Nihilo': 'экс нихило экснихило', 'Jean Paul Gaultier': 'жан поль готье готьер',
+    'Kilian': 'килиан киллиан', 'Louis Vuitton': 'луи вуиттон виттон вьюттон',
+    'Maison Crivelli': 'мезон кривелли', 'Parfums de Marly': 'парфюмс де марли',
+    'Tom Ford': 'том форд', 'Viktor & Rolf': 'виктор рольф',
+}
+NAME_WORDS = [
+    'интерлюд интерлюд мэн', 'интерлюд блэк айрис ирис', 'гедонист гедонистик хедонистик',
+    'авентус', 'абсолю абсолют авентус', 'буа империал бойс империал',
+    'блю талисман', 'гедонист хедонист', 'гедонист хедонист экстракт экстрат',
+    'ле маль ле парфюм', 'ле маль эликсир', 'энджелс шер ангелс шейр доля ангелов',
+    'пасифик пацифик чилл', 'уд маракуйя маракуя', 'альтаир алтаир', 'херод герод',
+    'грей ветивер грэй', 'нуар экстрим', 'солей блан солей бланк', 'спайсбомб спайс бомб',
+]
+BRANDS = list(BRAND_WORDS)
+NAMES = list(PERFUMES)
+BRAND_OF = {name: next(brand for brand in BRANDS if name.startswith(brand + ' ')) for name in NAMES}
+PAGE_SIZE = 5
+
+
+def normalize(text):
+    text = unicodedata.normalize('NFKD', text.casefold().replace('ё', 'е'))
+    text = ''.join(c for c in text if not unicodedata.combining(c))
+    return ' '.join(re.sub(r'[^\w\s]', ' ', text).split())
+
+
+SEARCH_TEXT = {name: normalize(name + ' ' + BRAND_WORDS[BRAND_OF[name]] + ' ' + NAME_WORDS[i]) for i, name in enumerate(NAMES)}
+
+
+def find_perfumes(query):
+    words = normalize(query).split()
+    if not words:
+        return []
+    return [name for name in NAMES if all(word in SEARCH_TEXT[name] for word in words)]
 
 
 def money(value):
@@ -88,7 +122,34 @@ def main_menu():
 
 
 def catalog_menu():
-    return ReplyKeyboardMarkup([[name] for name in PERFUMES] + [['⬅️ Главное меню']], resize_keyboard=True, input_field_placeholder='Выберите аромат')
+    return ReplyKeyboardMarkup([['🔎 Найти аромат', '🏷 Выбрать бренд'], ['📋 Все ароматы'], ['⬅️ Главное меню']], resize_keyboard=True, input_field_placeholder='Можно написать название аромата')
+
+
+def brand_menu():
+    rows = [BRANDS[i:i+2] for i in range(0, len(BRANDS), 2)]
+    return ReplyKeyboardMarkup(rows + [['🔎 Найти аромат'], ['⬅️ В каталог']], resize_keyboard=True)
+
+
+async def show_results(message, context, names=None, title=None, page=0):
+    if names is not None:
+        context.user_data['results'] = list(names)
+        context.user_data['results_title'] = title or 'Ароматы'
+    names = context.user_data.get('results', [])
+    pages = max(1, (len(names) + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = max(0, min(page, pages - 1))
+    context.user_data['page'] = page
+    rows = [[name] for name in names[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]]
+    nav = []
+    if page:
+        nav.append('◀️ Предыдущие')
+    if page + 1 < pages:
+        nav.append('Следующие ▶️')
+    if nav:
+        rows.append(nav)
+    rows += [['🔎 Найти аромат', '🏷 Выбрать бренд'], ['⬅️ В каталог']]
+    heading = context.user_data.get('results_title', 'Ароматы')
+    body = f'{heading}\n\nНайдено: {len(names)}. Страница {page + 1} из {pages}.\nВыберите аромат:' if names else 'Ничего не найдено. Попробуйте часть названия, например: авентус, интерлюд или том форд.'
+    await message.reply_text(body, reply_markup=ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def order_buttons(name, perfume):
@@ -108,7 +169,8 @@ async def send_catalog(update, context):
         bot = await context.bot.get_me()
         await message.reply_text('🌸 Каталог «Нота 59»\n\nВыбирайте ароматы в личном чате с ботом.', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('🌸 Открыть каталог', url=f'https://t.me/{bot.username}?start=catalog')]]))
         return
-    await message.reply_text(f'🌸 Каталог «Нота 59»\n\nАроматов: {len(PERFUMES)}\nОбъёмы 5 и 10 мл. Атомайзер включён.\n\nВыберите аромат:', reply_markup=catalog_menu())
+    context.user_data.clear()
+    await message.reply_text(f'🌸 Каталог «Нота 59»\n\nАроматов: {len(PERFUMES)}\nОбъёмы 5 и 10 мл. Атомайзер включён.\n\nВведите часть названия или выберите поиск и бренды:', reply_markup=catalog_menu())
 
 
 async def start(update, context):
@@ -118,6 +180,7 @@ async def start(update, context):
     if chat.type != 'private' or (context.args and context.args[0] == 'catalog'):
         await send_catalog(update, context)
         return
+    context.user_data.clear()
     await message.reply_text('Добро пожаловать в «Нота 59»! 🌸\n\nПарфюмерия на распив.\nВыберите нужный раздел на клавиатуре ниже.', reply_markup=main_menu())
 
 
@@ -138,7 +201,7 @@ async def show_perfume(message, name):
 
 
 SECTIONS = {
-    '🛒 Как купить': '🛒 Как купить\n\nОткройте каталог, выберите аромат и нажмите кнопку 5 мл или 10 мл. Откроется чат продавца с подготовленным сообщением — отправьте его самостоятельно.\n\nДо оплаты уточните наличие, стоимость и способ получения.\nАтомайзер включён.\n@kodenn88',
+    '🛒 Как купить': '🛒 Как купить\n\nОткройте каталог, найдите аромат по названию или бренду и нажмите кнопку 5 мл или 10 мл в карточке. Откроется чат продавца с подготовленным сообщением — отправьте его самостоятельно.\n\nДо оплаты уточните наличие, стоимость и способ получения.\nАтомайзер включён.\n@kodenn88',
     '💬 Связаться': '💬 Администратор «Нота 59»\n\nПо вопросам наличия ароматов и оформления заказа:\n@kodenn88\nhttps://t.me/kodenn88',
     '📜 Правила': '📜 Информация\n\nУсловия заказа, оплаты и получения уточняйте у администратора до покупки.\n\nПолные правила группы добавим в этот раздел позже.',
 }
@@ -148,15 +211,32 @@ async def handle_message(update, context):
     message = update.effective_message
     if message is None:
         return
-    text = message.text
-    if text == '🌸 Каталог':
+    text = (message.text or '').strip()
+    if text in ('🌸 Каталог', '⬅️ В каталог'):
         await send_catalog(update, context)
     elif text == '⬅️ Главное меню':
+        context.user_data.clear()
         await message.reply_text('Выберите нужный раздел:', reply_markup=main_menu())
+    elif text == '🔎 Найти аромат':
+        await message.reply_text('🔎 Напишите название или его часть на русском или латинице.\n\nНапример: авентус, интерлюд, гедонист или Tom Ford.\nПоиск начинается после отправки сообщения.', reply_markup=catalog_menu())
+    elif text == '🏷 Выбрать бренд':
+        await message.reply_text('🏷 Выберите бренд:', reply_markup=brand_menu())
+    elif text == '📋 Все ароматы':
+        await show_results(message, context, NAMES, '📋 Все ароматы')
+    elif text in BRANDS:
+        await show_results(message, context, [name for name in NAMES if BRAND_OF[name] == text], '🏷 ' + text)
+    elif text in ('◀️ Предыдущие', 'Следующие ▶️'):
+        if 'results' not in context.user_data:
+            await send_catalog(update, context)
+        else:
+            step = 1 if text == 'Следующие ▶️' else -1
+            await show_results(message, context, page=context.user_data.get('page', 0) + step)
     elif ALIASES.get(text, text) in PERFUMES:
         await show_perfume(message, ALIASES.get(text, text))
+    elif text in SECTIONS:
+        await message.reply_text(SECTIONS[text], reply_markup=main_menu())
     else:
-        await message.reply_text(SECTIONS.get(text, 'Выберите раздел на клавиатуре ниже 🙂\nЧтобы открыть меню, отправьте /start.'), reply_markup=main_menu())
+        await show_results(message, context, find_perfumes(text), '🔎 Результаты поиска')
 
 
 async def group_rules(update, context):
