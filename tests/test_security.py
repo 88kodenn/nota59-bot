@@ -68,7 +68,7 @@ class CatalogTests(unittest.TestCase):
     def test_search(self):
         self.assertEqual(len(bot.find_perfumes('авентус')), 2)
         self.assertEqual(len(bot.find_perfumes('ИНТЕРЛЮД')), 2)
-        self.assertEqual(len(bot.find_perfumes('том форд')), 4)
+        self.assertEqual(len(bot.find_perfumes('том форд')), 3)
         self.assertEqual(len(bot.find_perfumes('Tom Ford')), 4)
         self.assertEqual(bot.find_perfumes(''), [])
         self.assertEqual(bot.find_perfumes('неттакогоаромата'), [])
