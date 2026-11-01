@@ -1,11 +1,12 @@
 import logging
 import os
 import re
+import time
 import unicodedata
-from urllib.parse import quote
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from urllib.parse import quote, urlsplit
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, MessageEntity
 from telegram.error import TelegramError
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ApplicationHandlerStop
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.INFO)
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -292,17 +293,156 @@ async def ban_spammer(update, context):
     await message.reply_text(f'🚫 Пользователь {target.full_name} заблокирован.\nID: {target.id}\n\nБлокировка бессрочная. Снять её можно в настройках группы.')
 
 
+PROTECTED_GROUP_ID = -5479944910
+SECURITY_OWNER_ID = 832210856
+ALLOWED_LINK_DOMAINS = frozenset({'fragrantica.ru', 'randewoo.ru'})
+
+
+def link_is_allowed(raw):
+    if not isinstance(raw, str) or not raw or len(raw) > 4096 or raw != raw.strip():
+        return False
+    if '\\' in raw or any(c.isspace() or unicodedata.category(c).startswith('C') for c in raw):
+        return False
+    candidate = 'https:' + raw if raw.startswith('//') else raw
+    if '://' not in candidate:
+        candidate = 'https://' + candidate
+    try:
+        p = urlsplit(candidate)
+        if p.scheme.lower() not in {'http', 'https'} or not p.netloc:
+            return False
+        if p.username is not None or p.password is not None or '%' in p.netloc:
+            return False
+        host = p.hostname
+        if not host or not host.isascii() or host.endswith('.'):
+            return False
+        host = host.lower()
+        if any(not label or len(label) > 63 or label.startswith('-') or label.endswith('-') or re.fullmatch(r'[a-z0-9-]+', label) is None for label in host.split('.')):
+            return False
+        if p.port not in (None, 443 if p.scheme.lower() == 'https' else 80):
+            return False
+        return any(host == domain or host.endswith('.' + domain) for domain in ALLOWED_LINK_DOMAINS)
+    except (ValueError, UnicodeError):
+        return False
+
+
+def message_links(message):
+    result = set()
+    kinds = [MessageEntity.URL, MessageEntity.TEXT_LINK]
+    for entities in (message.parse_entities(types=kinds), message.parse_caption_entities(types=kinds)):
+        for entity, visible in entities.items():
+            value = entity.url if entity.type == MessageEntity.TEXT_LINK else visible
+            if value:
+                result.add(value)
+    return result
+
+
+async def security_notice(bot, data, text, force=False):
+    now = time.monotonic()
+    if not force and now - data.get('security_notice_at', -1000) < 60:
+        return
+    data['security_notice_at'] = now
+    try:
+        await bot.send_message(SECURITY_OWNER_ID, '🛡 Нота 59\n\n' + text)
+    except TelegramError:
+        logging.warning('Уведомление владельцу не доставлено; откройте личный чат бота и нажмите /start')
+
+
+async def check_security(application):
+    data = application.bot_data
+    data['link_filter_enabled'] = False
+    try:
+        chat = await application.bot.get_chat(PROTECTED_GROUP_ID)
+        if chat.id != PROTECTED_GROUP_ID or chat.type not in ('group', 'supergroup'):
+            raise ValueError('Ожидалась указанная группа')
+        member = await application.bot.get_chat_member(chat.id, application.bot.id)
+        if member.status != 'administrator' or not member.can_delete_messages:
+            data['security_status'] = 'Фильтр выключен: нужны права администратора с удалением сообщений.'
+        else:
+            data['link_filter_enabled'] = True
+            data['security_status'] = f'Фильтр включён для группы {chat.id}. Разрешены fragrantica.ru и randewoo.ru и их поддомены. Муты и автобаны выключены.'
+    except (TelegramError, ValueError):
+        data['security_status'] = f'Фильтр выключен: Telegram не подтвердил доступ к группе {PROTECTED_GROUP_ID}. Проверьте ID и членство бота. ID не изменён автоматически.'
+    logging.info('%s', data['security_status'])
+    await security_notice(application.bot, data, data['security_status'], force=True)
+
+
+async def security_command(update, context):
+    m, u = update.effective_message, update.effective_user
+    if m is None or u is None or m.sender_chat is not None or u.id != SECURITY_OWNER_ID:
+        return
+    if update.effective_chat.type != 'private':
+        await m.reply_text('Диагностика доступна владельцу в личном чате бота: /security')
+        return
+    await check_security(context.application)
+
+
+async def security_ids(update, context):
+    m, u, chat = update.effective_message, update.effective_user, update.effective_chat
+    if m is None or u is None or chat is None or m.sender_chat is not None or u.id != SECURITY_OWNER_ID:
+        return
+    await m.reply_text(f'ID текущего чата: {chat.id}\nВаш ID: {u.id}\nНастроенная группа: {PROTECTED_GROUP_ID}')
+
+
+async def group_link_filter(update, context):
+    m, chat = update.effective_message, update.effective_chat
+    if m is None or chat is None or chat.id != PROTECTED_GROUP_ID or chat.type not in ('group', 'supergroup'):
+        return
+    if not context.bot_data.get('link_filter_enabled', False):
+        return
+    links = message_links(m)
+    if not links or all(link_is_allowed(link) for link in links):
+        return
+    if m.sender_chat is not None:
+        if m.sender_chat.id == chat.id:
+            return
+        actor = f'чат/канал {m.sender_chat.id}'
+    else:
+        user = m.from_user
+        if user is None or user.id == context.bot.id:
+            return
+        try:
+            member = await context.bot.get_chat_member(chat.id, user.id)
+        except TelegramError:
+            await security_notice(context.bot, context.bot_data, f'Не удалось проверить права отправителя в группе {chat.id}. Сообщение {m.message_id} не удалено.')
+            return
+        if member.status in ('creator', 'administrator'):
+            return
+        actor = f'пользователь {user.id}'
+    recent = context.bot_data.setdefault('link_filter_recent', {})
+    now = time.monotonic()
+    for key, stamp in list(recent.items()):
+        if now - stamp > 300:
+            recent.pop(key, None)
+    event = (chat.id, m.message_id, m.edit_date)
+    if event in recent:
+        raise ApplicationHandlerStop
+    try:
+        await m.delete()
+    except TelegramError:
+        await security_notice(context.bot, context.bot_data, f'Запрещённая ссылка обнаружена, но сообщение {m.message_id} в группе {chat.id} не удалено. Проверьте права бота. Мут и бан не применялись.')
+        raise ApplicationHandlerStop
+    if len(recent) >= 1000:
+        recent.pop(next(iter(recent)), None)
+    recent[event] = now
+    logging.info('Фильтр удалил сообщение: chat_id=%s message_id=%s', chat.id, m.message_id)
+    await security_notice(context.bot, context.bot_data, f'Удалено сообщение {m.message_id} в группе {chat.id}. Отправитель: {actor}. Причина: ссылка вне разрешённого списка. Мут и бан не применялись.')
+    raise ApplicationHandlerStop
+
+
 async def error_handler(update, context):
     error = context.error
     if error is not None:
-        logging.error('Необработанная ошибка бота', exc_info=(type(error), error, error.__traceback__))
+        logging.error('Необработанная ошибка бота: %s', type(error).__name__)
 
 
 def main():
     token = os.environ.get('BOT_TOKEN', '').strip()
     if not token:
         raise RuntimeError('Добавьте переменную BOT_TOKEN в настройках хостинга.')
-    application = Application.builder().token(token).build()
+    application = Application.builder().token(token).post_init(check_security).build()
+    application.add_handler(MessageHandler(filters.ChatType.GROUPS & (filters.TEXT | filters.CAPTION), group_link_filter), group=-1)
+    application.add_handler(CommandHandler('security', security_command))
+    application.add_handler(CommandHandler('security_ids', security_ids))
     application.add_handler(CommandHandler('ban', ban_spammer, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler('rules', group_rules, filters=filters.ChatType.GROUPS))
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS & filters.ChatType.GROUPS, welcome_members))
@@ -311,7 +451,7 @@ def main():
     application.add_handler(CommandHandler('catalog', send_catalog))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, handle_message))
     application.add_error_handler(error_handler)
-    application.run_polling()
+    application.run_polling(allowed_updates=['message', 'edited_message'])
 
 
 if __name__ == '__main__':
