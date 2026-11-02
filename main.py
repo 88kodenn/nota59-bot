@@ -463,6 +463,27 @@ async def security_ids(update, context):
     await m.reply_text(f'ID текущего чата: {chat.id}\nВаш ID: {u.id}\nНастроенная группа: {PROTECTED_GROUP_ID}')
 
 
+async def announce(update, context):
+    m, u, chat = update.effective_message, update.effective_user, update.effective_chat
+    if m is None or u is None or chat is None or m.sender_chat is not None or u.id != SECURITY_OWNER_ID:
+        return
+    if chat.type != 'private':
+        await m.reply_text('Анонсы доступны владельцу только в личном чате с ботом: /announce Текст поста')
+        return
+    text = ' '.join(context.args).strip()
+    if not text:
+        await m.reply_text('Формат: /announce Текст поста\n\nБот опубликует текст в группе «Нота 59» от своего имени.')
+        return
+    try:
+        await context.bot.send_message(PROTECTED_GROUP_ID, text)
+    except TelegramError:
+        logging.exception('Не удалось опубликовать анонс')
+        await m.reply_text('Не удалось опубликовать анонс. Проверьте, что бот состоит в группе и имеет право отправлять сообщения.')
+        return
+    slog.log_event('announce', PROTECTED_GROUP_ID, u.id, f'Анонс опубликован владельцем {u.id}')
+    await m.reply_text('✅ Анонс опубликован в группе «Нота 59».')
+
+
 async def group_link_filter(update, context):
     m, chat = update.effective_message, update.effective_chat
     if m is None or chat is None or chat.id != PROTECTED_GROUP_ID or chat.type not in ('group', 'supergroup'):
@@ -528,6 +549,7 @@ def main():
     application.add_handler(ChatMemberHandler(my_chat_member_update, ChatMemberHandler.MY_CHAT_MEMBER))
     application.add_handler(CommandHandler('security', security_command))
     application.add_handler(CommandHandler('security_ids', security_ids))
+    application.add_handler(CommandHandler('announce', announce))
     report.register(application)
     application.add_handler(CommandHandler('warn', warn_spammer, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler('ban', ban_spammer, filters=filters.ChatType.GROUPS))
