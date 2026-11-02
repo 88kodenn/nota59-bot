@@ -27,17 +27,34 @@ def normalize_choice(text):
 CATEGORY_LOOKUP = {normalize_choice(label): label for label in CATEGORIES}
 
 
+def category_rows():
+    return [['Свежий 🌿', 'Сладкий 🍮'], ['Древесный 🪵', 'Дымный 🔥'], ['Гурманский 🧁', 'Пряный 🌶'], ['На каждый день', 'На вечер']]
+
+
+def home_menu():
+    return ReplyKeyboardMarkup([['🫙 Каталог', PICK]] + category_rows() + [['🛒 Как купить', '💬 Связаться'], ['📜 Правила']], resize_keyboard=True)
+
+
 def catalog_menu():
     return ReplyKeyboardMarkup([['🔎 Найти аромат', '🏷 Выбрать бренд'], [PICK], ['📋 Все ароматы'], ['⬅️ Главное меню']], resize_keyboard=True)
 
 
 def picker_menu():
-    return ReplyKeyboardMarkup([['Свежий 🌿', 'Сладкий 🍮'], ['Древесный 🪵', 'Дымный 🔥'], ['Гурманский 🧁', 'Пряный 🌶'], ['На каждый день', 'На вечер'], ['⬅️ В каталог']], resize_keyboard=True)
+    return ReplyKeyboardMarkup(category_rows() + [['⬅️ В каталог'], ['⬅️ Главное меню']], resize_keyboard=True)
 
 
 def catalogue():
     import main
     return main
+
+
+async def open_home(update, context):
+    m = update.effective_message
+    if m is None:
+        return
+    context.user_data.clear()
+    await m.reply_text('Добро пожаловать в «Нота 59»! 🫙\n\nПарфюмерия на распив.\n\nОткройте каталог или выберите характер аромата и повод прямо на главном экране.', reply_markup=home_menu())
+    raise ApplicationHandlerStop
 
 
 async def open_catalog(update, context):
@@ -52,6 +69,8 @@ async def open_catalog(update, context):
 async def open_start_catalog(update, context):
     if context.args and context.args[0] == 'catalog':
         await open_catalog(update, context)
+    else:
+        await open_home(update, context)
 
 
 async def show_selection(message, context, category, page=0):
@@ -64,7 +83,7 @@ async def show_selection(message, context, category, page=0):
     nav = ([PREV] if page else []) + ([NEXT] if page + 1 < pages else [])
     if nav:
         rows.append(nav)
-    rows += [[PICK], ['⬅️ В каталог']]
+    rows += [[PICK], ['⬅️ В каталог'], ['⬅️ Главное меню']]
     text = f'{category}\n\nНайдено: {len(names)}. Страница {page + 1} из {pages}.\nВыберите аромат, чтобы открыть описание, ноты, объёмы и цены.' if names else f'{category}\n\nВ этой категории пока нет ароматов.'
     await message.reply_text(text, reply_markup=ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
@@ -75,6 +94,8 @@ async def handle_picker(update, context):
         return
     text = (m.text or '').strip()
     choice = normalize_choice(text)
+    if choice == normalize_choice('⬅️ Главное меню'):
+        await open_home(update, context)
     if choice in (normalize_choice('🫙 Каталог'), normalize_choice('⬅️ В каталог')):
         await open_catalog(update, context)
     if choice == normalize_choice(PICK):
@@ -90,6 +111,11 @@ async def handle_picker(update, context):
     if category in CATEGORIES and choice in (normalize_choice(PREV), normalize_choice(NEXT)):
         page = context.user_data.get('picker_page', 0) + (1 if choice == normalize_choice(NEXT) else -1)
         await show_selection(m, context, category, page)
+        raise ApplicationHandlerStop
+    if text in ('🛒 Как купить', '💬 Связаться', '📜 Правила'):
+        context.user_data.pop('picker_category', None)
+        context.user_data.pop('picker_page', None)
+        await m.reply_text(catalogue().SECTIONS[text], reply_markup=home_menu())
         raise ApplicationHandlerStop
     if category and text not in catalogue().PERFUMES and text not in catalogue().ALIASES:
         context.user_data.pop('picker_category', None)
