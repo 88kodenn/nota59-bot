@@ -1,4 +1,6 @@
 """Curated catalogue selections; occasion labels are shop recommendations."""
+import re
+import unicodedata
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import MessageHandler, CommandHandler, ApplicationHandlerStop, filters
 
@@ -15,6 +17,14 @@ CATEGORIES = {
 }
 PAGE_SIZE = 5
 PREV, NEXT = '◀️ Предыдущие', 'Следующие ▶️'
+
+
+def normalize_choice(text):
+    text = unicodedata.normalize('NFKC', text).casefold().replace('ё', 'е')
+    return ' '.join(re.findall(r'[^\W_]+', text, flags=re.UNICODE))
+
+
+CATEGORY_LOOKUP = {normalize_choice(label): label for label in CATEGORIES}
 
 
 def catalog_menu():
@@ -64,19 +74,21 @@ async def handle_picker(update, context):
     if m is None:
         return
     text = (m.text or '').strip()
-    if text in ('🫙 Каталог', '⬅️ В каталог'):
+    choice = normalize_choice(text)
+    if choice in (normalize_choice('🫙 Каталог'), normalize_choice('⬅️ В каталог')):
         await open_catalog(update, context)
-    if text == PICK:
+    if choice == normalize_choice(PICK):
         context.user_data.pop('picker_category', None)
         context.user_data.pop('picker_page', None)
-        await m.reply_text('✨ Какой аромат ищете?\n\nПо характеру: свежий, сладкий, древесный, дымный, гурманский или пряный.\nПо поводу: на каждый день или на вечер.\n\nВыберите кнопку ниже. Категории могут пересекаться. Подбор условный: ориентируйтесь на свой вкус и условия использования.', reply_markup=picker_menu())
+        await m.reply_text('✨ Какой аромат ищете?\n\nПо характеру: свежий, сладкий, древесный, дымный, гурманский или пряный.\nПо поводу: на каждый день или на вечер.\n\nНажмите кнопку ниже или напишите категорию — например, «Свежий» или «Гурманский».\n\nКатегории могут пересекаться. Подбор условный: ориентируйтесь на свой вкус и условия использования.', reply_markup=picker_menu())
         raise ApplicationHandlerStop
-    if text in CATEGORIES:
-        await show_selection(m, context, text)
+    selected = CATEGORY_LOOKUP.get(choice)
+    if selected is not None:
+        await show_selection(m, context, selected)
         raise ApplicationHandlerStop
     category = context.user_data.get('picker_category')
-    if category in CATEGORIES and text in (PREV, NEXT):
-        page = context.user_data.get('picker_page', 0) + (1 if text == NEXT else -1)
+    if category in CATEGORIES and choice in (normalize_choice(PREV), normalize_choice(NEXT)):
+        page = context.user_data.get('picker_page', 0) + (1 if choice == normalize_choice(NEXT) else -1)
         await show_selection(m, context, category, page)
         raise ApplicationHandlerStop
     if category and text not in catalogue().PERFUMES and text not in catalogue().ALIASES:
