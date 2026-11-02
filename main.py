@@ -122,7 +122,7 @@ def money(value):
 
 
 def main_menu():
-    return ReplyKeyboardMarkup([['🧪 Каталог', '🛒 Как купить'], ['💬 Связаться', '📜 Правила']], resize_keyboard=True)
+    return ReplyKeyboardMarkup([['🫙 Каталог', '🛒 Как купить'], ['💬 Связаться', '📜 Правила']], resize_keyboard=True)
 
 
 def catalog_menu():
@@ -173,10 +173,10 @@ async def send_catalog(update, context):
         return
     if chat.type != 'private':
         bot = await context.bot.get_me()
-        await message.reply_text('🧪 Каталог «Нота 59»\n\nВыбирайте ароматы в личном чате с ботом.', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('🧪 Открыть каталог', url=f'https://t.me/{bot.username}?start=catalog')]]))
+        await message.reply_text('🫙 Каталог «Нота 59»\n\nВыбирайте ароматы в личном чате с ботом.', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('🫙 Открыть каталог', url=f'https://t.me/{bot.username}?start=catalog')]]))
         return
     context.user_data.clear()
-    await message.reply_text(f'🧪 Каталог «Нота 59»\n\n✨ Ароматов: {len(PERFUMES)}\n📦 Объёмы 5 и 10 мл. Атомайзер включён.\n\n🔎 Введите часть названия или выберите поиск и бренды:', reply_markup=catalog_menu())
+    await message.reply_text(f'🫙 Каталог «Нота 59»\n\n✨ Ароматов: {len(PERFUMES)}\n📦 Объёмы 5 и 10 мл. Атомайзер включён.\n\n🔎 Введите часть названия или выберите поиск и бренды:', reply_markup=catalog_menu())
 
 
 async def start(update, context):
@@ -187,7 +187,7 @@ async def start(update, context):
         await send_catalog(update, context)
         return
     context.user_data.clear()
-    await message.reply_text('Добро пожаловать в «Нота 59»! 🧪\n\n🥃 Парфюмерия на распив.\n🪵 Выберите нужный раздел на клавиатуре ниже.', reply_markup=main_menu())
+    await message.reply_text('Добро пожаловать в «Нота 59»! 🫙\n\n🥃 Парфюмерия на распив.\n🪵 Выберите нужный раздел на клавиатуре ниже.', reply_markup=main_menu())
 
 
 async def show_perfume(message, name):
@@ -202,7 +202,7 @@ async def show_perfume(message, name):
                 logging.exception('Не удалось отправить фото %s', name)
         else:
             logging.warning('Фото не найдено: %s', path)
-    text = (f'🧪 {name}\n\n📖 ОПИСАНИЕ\n{perfume["description"]}\n\n———\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{perfume["notes"]}\n\n———\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n• 5 мл — {money(perfume["price5"])}\n• 10 мл — {money(perfume["price10"])}\n\n📦 Атомайзер включён в стоимость.\n\n✅ Нажмите нужный объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и способ получения.\n@{SELLER}')
+    text = (f'🫙 {name}\n\n📖 ОПИСАНИЕ\n{perfume["description"]}\n\n———\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{perfume["notes"]}\n\n———\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n• 5 мл — {money(perfume["price5"])}\n• 10 мл — {money(perfume["price10"])}\n\n📦 Атомайзер включён в стоимость.\n\n✅ Нажмите нужный объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и способ получения.\n@{SELLER}')
     await message.reply_text(text, reply_markup=order_buttons(name, perfume))
 
 
@@ -218,7 +218,7 @@ async def handle_message(update, context):
     if message is None:
         return
     text = (message.text or '').strip()
-    if text in ('🧪 Каталог', '⬅️ В каталог'):
+    if text in ('🫙 Каталог', '⬅️ В каталог'):
         await send_catalog(update, context)
     elif text == '⬅️ Главное меню':
         context.user_data.clear()
@@ -256,7 +256,7 @@ async def welcome_members(update, context):
         return
     for member in message.new_chat_members:
         if not member.is_bot:
-            await message.reply_text(f'🧪 {member.first_name}, добро пожаловать в «Нота 59»!\n\n✨ Здесь собраны ароматы на распив — чтобы познакомиться с композицией, носить любимый парфюм с собой или попробовать то, что пока не хочется брать целым флаконом.\n\n📦 Объёмы: 5 и 10 мл. Атомайзер включён в стоимость.\n\n🧪 Каталог: /catalog\n📜 Информация группы: /rules\n👤 По вопросам заказов: @kodenn88', reply_markup=report.report_keyboard())
+            await message.reply_text(f'🫙 {member.first_name}, добро пожаловать в «Нота 59»!\n\n✨ Здесь собраны ароматы на распив — чтобы познакомиться с композицией, носить любимый парфюм с собой или попробовать то, что пока не хочется брать целым флаконом.\n\n📦 Объёмы: 5 и 10 мл. Атомайзер включён в стоимость.\n\n🫙 Каталог: /catalog\n📜 Информация группы: /rules\n👤 По вопросам заказов: @kodenn88', reply_markup=report.report_keyboard())
 
 
 def command_allowed(context, user_id, key, limit, window):
