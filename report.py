@@ -94,7 +94,9 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def register(application):
     from telegram.ext import CommandHandler, CallbackQueryHandler
     import scent_picker
+    import group_catalog
 
     scent_picker.register(application)
+    group_catalog.register(application)
     application.add_handler(CommandHandler('report', report_command))
     application.add_handler(CallbackQueryHandler(report_help, pattern='^report_help$'))
