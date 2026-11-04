@@ -45,7 +45,7 @@ async def open_catalog(update, context):
     if m is None:
         return
     context.user_data.clear()
-    await m.reply_text(f'🫙 Каталог «Нота 59»\n\n✨ Ароматов: {len(catalogue().PERFUMES)}\n📦 Объёмы 5 и 10 мл. Атомайзер включён.\n\nНайдите аромат по названию, бренду или воспользуйтесь подбором.', reply_markup=catalog_menu())
+    await m.reply_text(f'💎 Каталог «Нота 59»\n\n✨ Ароматов: {len(catalogue().PERFUMES)}\n📦 Объёмы 5 и 10 мл. Атомайзер включён.\n\nНайдите аромат по названию, бренду или воспользуйтесь подбором.', reply_markup=catalog_menu())
     raise ApplicationHandlerStop
 
 
@@ -75,7 +75,7 @@ async def handle_picker(update, context):
         return
     text = (m.text or '').strip()
     choice = normalize_choice(text)
-    if choice in (normalize_choice('🫙 Каталог'), normalize_choice('⬅️ В каталог')):
+    if choice in (normalize_choice('💎 Каталог'), normalize_choice('⬅️ В каталог')):
         await open_catalog(update, context)
     if choice == normalize_choice(PICK):
         context.user_data.pop('picker_category', None)
