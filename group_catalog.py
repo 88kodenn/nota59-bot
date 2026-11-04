@@ -28,7 +28,7 @@ async def render(context, action):
     m = data()
     footer = [[button('⬅️ Меню группы', 'home')], await private_row(context)]
     if action == 'home':
-        return ('🫙 Нота 59 — каталог и заказы\n\nВыберите раздел. Меню общее для группы: переключение видно всем участникам.', K([[button('🌸 Каталог', 'list:-1:0'), button('✨ Подобрать аромат', 'pick')], [button('🛒 Как купить', 'buy'), button('📦 Получение', 'delivery')], [B('💬 Написать продавцу', url='https://t.me/kodenn88')], await private_row(context)]))
+        return ('💎 Нота 59 — каталог и заказы\n\nВыберите раздел. Меню общее для группы: переключение видно всем участникам.', K([[button('🌸 Каталог', 'list:-1:0'), button('✨ Подобрать аромат', 'pick')], [button('🛒 Как купить', 'buy'), button('📦 Получение', 'delivery')], [B('💬 Написать продавцу', url='https://t.me/kodenn88')], await private_row(context)]))
     if action == 'buy':
         return BUY, K(footer)
     if action == 'delivery':
@@ -64,7 +64,7 @@ async def render(context, action):
             raise ValueError('Invalid card')
         name = names[index]
         p = m.PERFUMES[name]
-        text = f'🫙 {name}\n\n📖 ОПИСАНИЕ\n{p["description"]}\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{p["notes"]}\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n5 мл — {m.money(p["price5"])}\n10 мл — {m.money(p["price10"])}\n\nАтомайзер включён. Нажмите объём и отправьте сообщение продавцу. До оплаты уточните наличие и получение.\n@kodenn88'
+        text = f'💎 {name}\n\n📖 ОПИСАНИЕ\n{p["description"]}\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{p["notes"]}\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n5 мл — {m.money(p["price5"])}\n10 мл — {m.money(p["price10"])}\n\nАтомайзер включён. Нажмите объём и отправьте сообщение продавцу. До оплаты уточните наличие и получение.\n@kodenn88'
         rows = [list(row) for row in m.order_buttons(name, p).inline_keyboard]
         return text, K(rows + [[button('⬅️ К списку', f'list:{cat}:{page}')]] + footer)
     raise ValueError('Unknown action')
