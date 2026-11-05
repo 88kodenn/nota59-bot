@@ -1,0 +1,90 @@
+name: Inline perfume spray counts
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/inline_spray_counts.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: inline-perfume-spray-counts
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Move spray counts into volume lines
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import ast
+          import hashlib
+          from pathlib import Path
+
+          path = Path('main.py')
+          raw = path.read_bytes()
+          header = b'blob ' + str(len(raw)).encode() + b'\0'
+          if hashlib.sha1(header + raw).hexdigest() != '2547dffad58c90c3a3d1e54ca93e7bdb87a155ae':
+              raise RuntimeError('main.py changed; refusing to overwrite')
+          tree = ast.parse(raw.decode('utf-8'))
+          funcs = [n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'show_perfume']
+          if len(funcs) != 1:
+              raise RuntimeError('Expected one card renderer')
+          func = funcs[0]
+          marker = '\n\n📦 Атомайзер включён в стоимость.'
+          block = '\n\nСКОЛЬКО ХВАТИТ\n• 5 мл — около 70 распылений.\n• 10 мл — около 140 распылений.\nКоличество распылений ориентировочное и зависит от атомайзера.'
+          statement = 'text = text.replace(' + repr(marker) + ', ' + repr(block + marker) + ', 1)'
+          expected = ast.dump(ast.parse(statement).body[0])
+          matches = [n for n in func.body if ast.dump(n) == expected]
+          if len(matches) != 1:
+              raise RuntimeError('Expected one original spray count insertion')
+          remove = matches[0]
+          lines = raw.splitlines(keepends=True)
+          start = sum(map(len, lines[:func.lineno - 1]))
+          end = sum(map(len, lines[:func.end_lineno]))
+          cut_start = sum(map(len, lines[:remove.lineno - 1]))
+          cut_end = sum(map(len, lines[:remove.end_lineno]))
+          snippet = (raw[start:cut_start] + raw[cut_end:end]).decode('utf-8')
+          replacements = {
+              '• 5 мл — ': '• 5 мл (около 70 распылений) — ',
+              '• 10 мл — ': '• 10 мл (около 140 распылений) — ',
+          }
+          for before, after in replacements.items():
+              if snippet.count(before) != 1:
+                  raise RuntimeError('Volume line missing or duplicated')
+              snippet = snippet.replace(before, after, 1)
+          merged = raw[:start] + snippet.encode('utf-8') + raw[end:]
+          compile(merged, 'main.py', 'exec')
+          updated = ast.parse(merged.decode('utf-8'))
+          func.body.remove(remove)
+          for node in ast.walk(func):
+              if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                  for before, after in replacements.items():
+                      node.value = node.value.replace(before, after)
+          if ast.dump(tree) != ast.dump(updated):
+              raise RuntimeError('Unexpected changes outside approved text')
+          new_func = next(n for n in updated.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'show_perfume')
+          text_values = [n.value for n in ast.walk(new_func) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+          if any('СКОЛЬКО ХВАТИТ' in value or 'Количество распылений ориентировочное' in value for value in text_values):
+              raise RuntimeError('Separate block was not completely removed')
+          for phrase in replacements.values():
+              if sum(value.count(phrase) for value in text_values) != 1:
+                  raise RuntimeError('Inline spray count missing or repeated')
+          path.write_bytes(merged)
+          print('Validated: syntax OK; spray counts beside volumes; separate block removed; other code unchanged')
+          PY
+      - name: Commit and push formatting update
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- main.py
+          git commit -m 'Move spray counts beside perfume volumes and remove separate block'
+          git push origin HEAD:main
