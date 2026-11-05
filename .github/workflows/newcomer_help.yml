@@ -1,0 +1,99 @@
+name: Newcomer commands and welcome button
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/newcomer_help.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Update newcomer help and welcome keyboard
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import ast
+          import hashlib
+          from pathlib import Path
+
+          expected = {
+              'main.py': 'af6bbf4bdd3422a625f9cba13ece97580888da77',
+              'report.py': 'e4a77f3c348d978de54fc339f869fc23302f8990',
+              'group_catalog.py': 'd058fe077a1223421abd19a2feca82bd0dd93b97',
+              'scent_picker.py': 'd574169a1d9f600672e78161ba7700e2bfdc87c8',
+          }
+          commands = set()
+          for name, sha in expected.items():
+              raw = Path(name).read_bytes()
+              digest = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+              if digest != sha:
+                  raise RuntimeError(name + ' changed; refusing to continue')
+              for node in ast.walk(ast.parse(raw.decode('utf-8'))):
+                  if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'CommandHandler' and node.args:
+                      arg = node.args[0]
+                      if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                          commands.add(arg.value)
+                      elif isinstance(arg, (ast.List, ast.Tuple)):
+                          commands.update(n.value for n in arg.elts if isinstance(n, ast.Constant) and isinstance(n.value, str))
+          if not {'catalog', 'menu', 'start', 'rules', 'report'} <= commands:
+              raise RuntimeError('Documented command is not registered')
+          path = Path('main.py')
+          raw = path.read_bytes()
+          tree = ast.parse(raw.decode('utf-8'))
+          sections = [n.value for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'SECTIONS' for t in n.targets)]
+          if len(sections) != 1 or not isinstance(sections[0], ast.Dict):
+              raise RuntimeError('Expected SECTIONS dictionary')
+          section = sections[0]
+          indexes = [i for i, k in enumerate(section.keys) if isinstance(k, ast.Constant) and k.value == '📜 Правила']
+          if len(indexes) != 1:
+              raise RuntimeError('Expected one rules entry')
+          rules = '📜 ПРАВИЛА «НОТА 59»\n\nЗдесь обсуждаем парфюмерию, распивы, впечатления и подбор ароматов.\n\nКОМАНДЫ ДЛЯ УЧАСТНИКОВ\n/catalog — открыть меню с каталогом в группе; в личном чате — личный каталог.\n/menu — открыть главное меню группы. Работает в группе «Нота 59».\n/start — в группе открыть меню, в личном чате начать работу с ботом.\n/rules — правила и памятка команд. Команда работает в группе.\n/report — пожаловаться администратору: ответьте этой командой на подозрительное сообщение в группе. Автоматического наказания по жалобе нет.\n\nКАК НАЧАТЬ\n1. Отправьте /catalog или нажмите «Открыть каталог» в закрепе или приветствии.\n2. Выберите аромат и объём.\n3. Для заказа нажмите кнопку объёма и отправьте подготовленное сообщение продавцу в личный чат.\n\nМОЖНО\n• Делиться впечатлениями и задавать вопросы.\n• Искать аромат по настроению или нотам.\n• Обращаться за помощью с выбором.\n\nНЕЛЬЗЯ\n• Размещать сторонние ссылки без согласования.\n• Рекламировать другие магазины и каналы.\n• Предлагать сделки в обход администратора.\n\nДо оплаты уточните наличие, итоговую сумму и способ получения.\nАдминистратор и заказы: @kodenn88\n\nЕсли в группе несколько ботов, отправьте команду с именем бота: /catalog@Nota_59_bot.\nКоманды модерации и служебные команды не предназначены для новичков.'
+          if len(rules) > 4096:
+              raise RuntimeError('Rules text too long')
+          edits = []
+          lines = raw.splitlines(keepends=True)
+          def edit(node, expression):
+              start = sum(map(len, lines[:node.lineno - 1])) + node.col_offset
+              end = sum(map(len, lines[:node.end_lineno - 1])) + node.end_col_offset
+              edits.append((start, end, expression.encode('utf-8')))
+              return ast.parse(expression, mode='eval').body
+          i = indexes[0]
+          section.values[i] = edit(section.values[i], repr(rules))
+          handlers = {n.name: n for n in tree.body if isinstance(n, ast.AsyncFunctionDef)}
+          rule_calls = [n for n in ast.walk(handlers['group_rules']) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == 'reply_text' and n.args]
+          if len(rule_calls) != 1:
+              raise RuntimeError('Expected one rules response')
+          call = rule_calls[0]
+          call.args[0] = edit(call.args[0], "SECTIONS['📜 Правила']")
+          old_keyboard = ast.dump(ast.parse('report.report_keyboard()', mode='eval').body)
+          welcome_keys = [k for n in ast.walk(handlers['welcome_members']) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == 'reply_text' for k in n.keywords if k.arg == 'reply_markup' and ast.dump(k.value) == old_keyboard]
+          if len(welcome_keys) != 1:
+              raise RuntimeError('Expected one original welcome keyboard')
+          key = welcome_keys[0]
+          expression = "InlineKeyboardMarkup([[InlineKeyboardButton('💎 Открыть каталог', callback_data='gc:list:-1:0')]]) if update.effective_chat and update.effective_chat.id == PROTECTED_GROUP_ID else report.report_keyboard()"
+          key.value = edit(key.value, expression)
+          merged = raw
+          for start, end, replacement in sorted(edits, reverse=True):
+              merged = merged[:start] + replacement + merged[end:]
+          compile(merged, 'main.py', 'exec')
+          if ast.dump(tree) != ast.dump(ast.parse(merged.decode('utf-8'))):
+              raise RuntimeError('Unexpected changes outside approved help and welcome keyboard')
+          path.write_bytes(merged)
+          print('Validated: rules command help updated; welcome has only catalog button in configured group; report command and catalog unchanged')
+          PY
+      - name: Commit and push newcomer help
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- main.py
+          git commit -m 'Document newcomer commands in rules and use catalog-only welcome button'
+          git push origin HEAD:main
