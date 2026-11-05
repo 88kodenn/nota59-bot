@@ -20,7 +20,7 @@ def button(text, action):
 
 
 def home_rows():
-    return [[button('Все ароматы', 'all'), button('Бренды', 'brands')], [button('Найти аромат', 'search'), button('Подобрать аромат', 'pick')], [button('Как купить', 'buy'), button('Правила', 'rules')], [B('Написать продавцу', url='https://t.me/kodenn88')]]
+    return [[button('📋 Все ароматы', 'all'), button('🏷 Бренды', 'brands')], [button('🔎 Найти аромат', 'search'), button('✨ Подобрать аромат', 'pick')], [button('🛒 Как купить', 'buy'), button('📜 Правила', 'rules')], [B('💬 Написать продавцу', url='https://t.me/kodenn88')]]
 
 
 def selection(context, names, title):
@@ -40,12 +40,12 @@ def list_view(context, key, page):
     rows = [[button(name, f'card:{indexes[name]}:{key}:{page}')] for name in names[page*PAGE:(page+1)*PAGE]]
     nav = []
     if page:
-        nav.append(button('Назад', f'list:{key}:{page-1}'))
+        nav.append(button('◀️ Назад', f'list:{key}:{page-1}'))
     if page + 1 < pages:
-        nav.append(button('Далее', f'list:{key}:{page+1}'))
+        nav.append(button('Далее ▶️', f'list:{key}:{page+1}'))
     if nav:
         rows.append(nav)
-    rows += [[button('Поиск', 'search'), button('Меню каталога', 'home')]]
+    rows += [[button('🔎 Поиск', 'search'), button('💎 Меню каталога', 'home')]]
     text = f'{title}\n\nНайдено: {len(names)}. Страница {page+1} из {pages}.\nВыберите аромат:' if names else 'Ничего не найдено. Попробуйте другое название или часть названия.'
     return text, K(rows)
 
@@ -59,8 +59,8 @@ def card_view(context, index, key, page):
     text = f'💎 {name}\n\n📖 ОПИСАНИЕ\n{p["description"]}\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{p["notes"]}\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n• 5 мл (около 70 распылений) — {m.money(p["price5"])}\n• 10 мл (около 140 распылений) — {m.money(p["price10"])}\n\nАтомайзер включён в стоимость.\nНажмите объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и получение.\n@kodenn88'
     rows = [list(row) for row in m.order_buttons(name, p).inline_keyboard]
     if p.get('photo'):
-        rows.append([button('Фото флакона', f'photo:{index}:{key}:{page}')])
-    rows.append([button('К списку', f'list:{key}:{page}')])
+        rows.append([button('📷 Фото флакона', f'photo:{index}:{key}:{page}')])
+    rows.append([button('↩️ К списку', f'list:{key}:{page}')])
     return text, K(rows)
 
 
@@ -74,16 +74,16 @@ def render(context, action):
         return selection(context, list(m.PERFUMES), 'Все ароматы')
     if action == 'brands':
         buttons = [button(brand, f'brand:{i}') for i, brand in enumerate(m.BRANDS)]
-        return 'Выберите бренд:', K([buttons[i:i+2] for i in range(0, len(buttons), 2)] + [[button('Меню каталога', 'home')]])
+        return 'Выберите бренд:', K([buttons[i:i+2] for i in range(0, len(buttons), 2)] + [[button('💎 Меню каталога', 'home')]])
     if action == 'pick':
         buttons = [button(label, f'category:{i}') for i, label in enumerate(scent_picker.CATEGORIES)]
-        return 'Какой аромат ищете?\nПодбор условный: ориентируйтесь на свой вкус.', K([buttons[i:i+2] for i in range(0, len(buttons), 2)] + [[button('Меню каталога', 'home')]])
+        return 'Какой аромат ищете?\nПодбор условный: ориентируйтесь на свой вкус.', K([buttons[i:i+2] for i in range(0, len(buttons), 2)] + [[button('💎 Меню каталога', 'home')]])
     if action == 'search':
         context.user_data['_pc_search'] = True
         return 'Напишите название аромата или его часть на русском или латинице.\nНапример: авентус, интерлюд или Tom Ford.', K([[button('Отмена', 'home')]])
     if action in ('buy', 'rules', 'contact'):
         section = {'buy': '🛒 Как купить', 'rules': '📜 Правила', 'contact': '💬 Связаться'}[action]
-        return m.SECTIONS[section], K([[button('Меню каталога', 'home')]])
+        return m.SECTIONS[section], K([[button('💎 Меню каталога', 'home')]])
     parts = action.split(':')
     if parts[0] == 'brand' and len(parts) == 2:
         index = int(parts[1])
