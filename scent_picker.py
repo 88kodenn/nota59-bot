@@ -97,6 +97,8 @@ async def handle_picker(update, context):
 
 
 def register(application):
+    import private_catalog
+    private_catalog.register(application)
     application.add_handler(CommandHandler('catalog', open_catalog, filters=filters.ChatType.PRIVATE), group=-2)
     application.add_handler(CommandHandler('start', open_start_catalog, filters=filters.ChatType.PRIVATE), group=-2)
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT & ~filters.COMMAND, handle_picker), group=-2)
