@@ -1,0 +1,82 @@
+name: Add private catalogue button emojis
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private_menu_emojis.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Update only button labels
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import ast
+          import hashlib
+          from pathlib import Path
+
+          path = Path('private_catalog.py')
+          raw = path.read_bytes()
+          digest = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+          if digest != '75ea419c94671c5b113649597ba730a1122a4021':
+              raise RuntimeError('private_catalog.py changed; refusing to overwrite')
+          labels = {
+              'Все ароматы': '📋 Все ароматы',
+              'Бренды': '🏷 Бренды',
+              'Найти аромат': '🔎 Найти аромат',
+              'Подобрать аромат': '✨ Подобрать аромат',
+              'Как купить': '🛒 Как купить',
+              'Правила': '📜 Правила',
+              'Написать продавцу': '💬 Написать продавцу',
+              'Назад': '◀️ Назад',
+              'Далее': 'Далее ▶️',
+              'Поиск': '🔎 Поиск',
+              'Меню каталога': '💎 Меню каталога',
+              'Фото флакона': '📷 Фото флакона',
+              'К списку': '↩️ К списку',
+          }
+          tree = ast.parse(raw.decode('utf-8'))
+          lines = raw.splitlines(keepends=True)
+          edits = []
+          counts = dict.fromkeys(labels, 0)
+          for node in ast.walk(tree):
+              if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ('button', 'B') and node.args):
+                  continue
+              value = node.args[0]
+              if not (isinstance(value, ast.Constant) and isinstance(value.value, str) and value.value in labels):
+                  continue
+              old = value.value
+              new = labels[old]
+              start = sum(map(len, lines[:value.lineno - 1])) + value.col_offset
+              end = sum(map(len, lines[:value.end_lineno - 1])) + value.end_col_offset
+              edits.append((start, end, repr(new).encode('utf-8')))
+              node.args[0] = ast.Constant(value=new)
+              counts[old] += 1
+          if not all(counts.values()):
+              raise RuntimeError('A button label is missing: ' + str(counts))
+          merged = raw
+          for start, end, replacement in sorted(edits, reverse=True):
+              merged = merged[:start] + replacement + merged[end:]
+          compile(merged, 'private_catalog.py', 'exec')
+          if ast.dump(tree) != ast.dump(ast.parse(merged.decode('utf-8'))):
+              raise RuntimeError('Unexpected changes outside button text')
+          path.write_bytes(merged)
+          print('Validated: syntax OK; only button labels changed; callbacks, URLs, layout and perfume names unchanged')
+          PY
+      - name: Commit and push button labels
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- private_catalog.py
+          git commit -m 'Add emojis to private catalogue menu and navigation buttons'
+          git push origin HEAD:main
