@@ -164,6 +164,7 @@ async def show_perfume(message, name):
         else:
             logging.warning('Фото не найдено: %s', path)
     text = (f'💎 {name}\n\n📖 ОПИСАНИЕ\n{perfume["description"]}\n\n———\n\n🌿 ПИРАМИДА / НОТЫ ПО FRAGRANTICA\n{perfume["notes"]}\n\n———\n\n💰 ОБЪЁМЫ И ЦЕНЫ\n• 5 мл — {money(perfume["price5"])}\n• 10 мл — {money(perfume["price10"])}\n\n📦 Атомайзер включён в стоимость.\n\n✅ Нажмите нужный объём и отправьте подготовленное сообщение продавцу. До оплаты уточните наличие и способ получения.\n@{SELLER}')
+    text = text.replace('\n\n📦 Атомайзер включён в стоимость.', '\n\nСКОЛЬКО ХВАТИТ\n• 5 мл — около 70 распылений.\n• 10 мл — около 140 распылений.\nКоличество распылений ориентировочное и зависит от атомайзера.\n\n📦 Атомайзер включён в стоимость.', 1)
     await message.reply_text(text, reply_markup=order_buttons(name, perfume))
 
 
