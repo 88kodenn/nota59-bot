@@ -1,0 +1,85 @@
+name: Add perfume spray counts
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add_spray_counts.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: add-perfume-spray-counts
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Validate and update card renderer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import ast
+          import hashlib
+          from pathlib import Path
+
+          path = Path('main.py')
+          original = path.read_bytes()
+          header = b'blob ' + str(len(original)).encode() + b'\0'
+          if hashlib.sha1(header + original).hexdigest() != '8b2ae046190c96bdf80fcc3c66eb22757d8520f6':
+              raise RuntimeError('main.py changed; refusing to overwrite it')
+          source = original.decode('utf-8')
+          tree = ast.parse(source)
+          functions = [n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'show_perfume']
+          if len(functions) != 1:
+              raise RuntimeError('Expected one show_perfume function')
+          func = functions[0]
+          marker = '\n\n📦 Атомайзер включён в стоимость.'
+          block = '\n\nСКОЛЬКО ХВАТИТ\n• 5 мл — около 70 распылений.\n• 10 мл — около 140 распылений.\nКоличество распылений ориентировочное и зависит от атомайзера.'
+          constants = [n.value for n in ast.walk(func) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+          if any('СКОЛЬКО ХВАТИТ' in value for value in constants):
+              raise RuntimeError('Spray count block already exists')
+          if sum(value.count(marker) for value in constants) != 1:
+              raise RuntimeError('Expected one atomizer note in card renderer')
+          last = func.body[-1]
+          if not (isinstance(last, ast.Expr) and isinstance(last.value, ast.Await)):
+              raise RuntimeError('Unexpected renderer structure')
+          call = last.value.value
+          if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name) and call.func.value.id == 'message' and call.func.attr == 'reply_text' and call.args and isinstance(call.args[0], ast.Name) and call.args[0].id == 'text'):
+              raise RuntimeError('Expected final message.reply_text(text, ...)')
+          statement = 'text = text.replace(' + repr(marker) + ', ' + repr(block + marker) + ', 1)'
+          insertion = (' ' * last.col_offset + statement + '\n').encode('utf-8')
+          lines = original.splitlines(keepends=True)
+          offset = sum(map(len, lines[:last.lineno - 1]))
+          merged = original[:offset] + insertion + original[offset:]
+          compile(merged, 'main.py', 'exec')
+          updated = ast.parse(merged.decode('utf-8'))
+          new_func = next(n for n in updated.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'show_perfume')
+          added = new_func.body.pop(-2)
+          if ast.dump(added) != ast.dump(ast.parse(statement).body[0]):
+              raise RuntimeError('Unexpected inserted statement')
+          if ast.dump(tree) != ast.dump(updated):
+              raise RuntimeError('Other bot code changed')
+          catalogs = [n for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'CATALOG' for t in n.targets)]
+          if len(catalogs) != 1 or len(ast.literal_eval(catalogs[0].value)) != 20:
+              raise RuntimeError('Expected 20 perfume cards')
+          sample = 'CARD' + marker + '\nORDER'
+          result = sample.replace(marker, block + marker, 1)
+          if result.count('СКОЛЬКО ХВАТИТ') != 1 or '70 распылений' not in result or '140 распылений' not in result:
+              raise RuntimeError('Spray count rendering check failed')
+          path.write_bytes(merged)
+          print('Validated: syntax OK; catalog unchanged; shared renderer includes approximate spray counts')
+          PY
+      - name: Commit and push card update
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- main.py
+          git commit -m 'Add approximate 70 and 140 spray counts to perfume cards'
+          git push origin HEAD:main
