@@ -1,0 +1,110 @@
+name: Consolidate perfume catalog
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/consolidate_catalog.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: consolidate-perfume-catalog
+  cancel-in-progress: false
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Validate and consolidate catalog
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import ast
+          import hashlib
+          from pathlib import Path
+
+          def blob(data):
+              header = b'blob ' + str(len(data)).encode() + b'\0'
+              return hashlib.sha1(header + data).hexdigest()
+
+          def catalog_node(tree):
+              nodes = [n for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'CATALOG' for t in n.targets)]
+              if len(nodes) != 1:
+                  raise RuntimeError('Expected exactly one CATALOG assignment')
+              return nodes[0]
+
+          main = Path('main.py')
+          original = main.read_bytes()
+          if blob(original) != '4c63c9ec83a1424046a8a437a24cef622e345d38':
+              raise RuntimeError('main.py changed; refusing to overwrite it')
+          expected = [
+              '9ec6a28358cce65e126ead014bd63620411a96e7',
+              'bcfbfbce9fddc3a639ef072dda4286809ecce5f8',
+              '9aa0a1436d6c223076ec4bc36b5421e0a5523e70',
+              '0ea781ec18a4b4c49b287316ac5830af1f4c65d4',
+          ]
+          labels = ['КОМУ ПОДОЙДЁТ:', 'КОГДА НОСИТЬ:', 'СТОЙКОСТЬ И ШЛЕЙФ:', 'СОВЕТ НОВИЧКУ:']
+          combined = []
+          paths = []
+          for i, sha in enumerate(expected, 1):
+              path = Path(f'catalog_part_{i}.py')
+              raw = path.read_bytes()
+              if blob(raw) != sha:
+                  raise RuntimeError(f'{path} changed; refusing to continue')
+              rows = ast.literal_eval(catalog_node(ast.parse(raw.decode('utf-8'))).value)
+              if not isinstance(rows, list) or len(rows) != 5:
+                  raise RuntimeError(f'{path}: expected five cards')
+              for row in rows:
+                  if not isinstance(row, tuple) or len(row) != 6:
+                      raise RuntimeError('Invalid card structure')
+                  if not all(row[3].count(label) == 1 for label in labels):
+                      raise RuntimeError('Missing or repeated guidance blocks')
+              combined.extend(rows)
+              paths.append(path)
+          if len(combined) != 20 or len({row[0] for row in combined}) != 20:
+              raise RuntimeError('Expected 20 unique perfumes')
+          tree = ast.parse(original.decode('utf-8'))
+          old_node = catalog_node(tree)
+          old_rows = ast.literal_eval(old_node.value)
+          if len(old_rows) != len(combined):
+              raise RuntimeError('Catalog length differs')
+          for before, after in zip(old_rows, combined):
+              if before[:3] != after[:3] or before[4:] != after[4:]:
+                  raise RuntimeError('Name, price, notes or photo differs')
+              if before[0] == 'Creed Aventus':
+                  if before != after:
+                      raise RuntimeError('Aventus must remain unchanged')
+              elif not after[3].startswith(before[3] + '\n\n'):
+                  raise RuntimeError('Original description must remain unchanged')
+          lines = original.splitlines(keepends=True)
+          start = sum(map(len, lines[:old_node.lineno - 1])) + old_node.col_offset
+          end = sum(map(len, lines[:old_node.end_lineno - 1])) + old_node.end_col_offset
+          replacement = ('CATALOG = [\n' + ''.join('    ' + repr(row) + ',\n' for row in combined) + ']').encode('utf-8')
+          merged = original[:start] + replacement + original[end:]
+          compile(merged, 'main.py', 'exec')
+          new_tree = ast.parse(merged.decode('utf-8'))
+          new_node = catalog_node(new_tree)
+          if ast.literal_eval(new_node.value) != combined:
+              raise RuntimeError('Merged catalog differs')
+          old_node.value = ast.Constant(value='CATALOG_CHECK')
+          new_node.value = ast.Constant(value='CATALOG_CHECK')
+          if ast.dump(tree) != ast.dump(new_tree):
+              raise RuntimeError('Code outside CATALOG changed')
+          main.write_bytes(merged)
+          for path in paths:
+              path.unlink()
+          print('Validated: 20 unique cards; main.py syntax OK; bot logic unchanged; four parts removed')
+          PY
+      - name: Commit and push consolidated main.py
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- main.py catalog_part_1.py catalog_part_2.py catalog_part_3.py catalog_part_4.py
+          git commit -m 'Consolidate all perfume cards into main.py and remove catalog parts'
+          git push origin HEAD:main
