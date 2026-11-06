@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nota 59 — каталог ароматов</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{color-scheme:light dark;font-family:system-ui,sans-serif;background:var(--tg-theme-bg-color,#f5f3ef);color:var(--tg-theme-text-color,#252525)}*{box-sizing:border-box}body{margin:0;padding:20px 16px 40px;max-width:850px;margin-inline:auto}h1{margin:0;font-size:30px}header p{color:var(--tg-theme-hint-color,#666)}.filters{display:grid;gap:10px;margin:22px 0}input,select{font:inherit;padding:14px;border:1px solid #9996;border-radius:12px;width:100%;background:var(--tg-theme-secondary-bg-color,#fff);color:inherit}.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}article{background:var(--tg-theme-secondary-bg-color,#fff);border:1px solid #9993;border-radius:18px;padding:18px}article img{width:100%;height:210px;object-fit:contain;border-radius:12px}h2{font-size:19px;line-height:1.4;margin:12px 0}.brand{color:var(--tg-theme-hint-color,#666);font-size:13px}.prices{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.prices span{padding:9px;background:#9991;border-radius:9px}details{margin:14px 0}summary{cursor:pointer;padding:6px 0}.description,.notes{white-space:pre-wrap;line-height:1.6;font-size:14px}a.order{display:block;text-align:center;text-decoration:none;background:var(--tg-theme-button-color,#6c57d9);color:var(--tg-theme-button-text-color,#fff);padding:13px;border-radius:11px;margin-top:16px}#status{font-size:14px;margin:14px 0}input:focus,select:focus,a:focus,summary:focus{outline:2px solid #8470e5;outline-offset:2px}
+</style>
+</head>
+<body>
+<header><h1>Nota 59</h1><p>Каталог ароматов · распив 5 и 10 мл</p></header>
+<div class="filters"><input id="search" type="search" placeholder="Найти аромат или ноту" aria-label="Поиск ароматов"><select id="brand" aria-label="Выбор бренда"><option value="">Все бренды</option></select></div>
+<p id="status" role="status">Загружаем каталог…</p><main id="catalog" class="grid"></main>
+<script>
+'use strict';
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();}
+const search=document.getElementById('search'),brand=document.getElementById('brand'),catalog=document.getElementById('catalog'),status=document.getElementById('status');
+const money=n=>new Intl.NumberFormat('ru-RU').format(n)+' ₽';
+const norm=s=>s.toLocaleLowerCase('ru').replaceAll('ё','е');
+function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
+let data;
+function render(){
+ const words=norm(search.value.trim()).split(/\s+/).filter(Boolean);
+ const items=data.items.filter(p=>(!brand.value||p.brand===brand.value)&&words.every(w=>norm([p.name,p.description,p.notes].join(' ')).includes(w)));
+ catalog.replaceChildren();status.textContent=items.length?'Найдено ароматов: '+items.length:'Ничего не найдено. Измените поиск или бренд.';
+ for(const p of items){
+  const card=el('article');
+  if(p.image){const img=el('img');img.src=p.image;img.alt=p.name;img.loading='lazy';card.append(img);}
+  card.append(el('p',p.brand,'brand'),el('h2',p.name));
+  const prices=el('div',undefined,'prices');prices.append(el('span','5 мл · '+money(p.price5)),el('span','10 мл · '+money(p.price10)));card.append(prices);
+  const details=el('details');details.append(el('summary','Описание и ноты'),el('p',p.description,'description'),el('p',p.notes,'notes'));card.append(details);
+  const link=el('a','Обсудить заказ','order');link.href='https://t.me/'+encodeURIComponent(data.seller)+'?text='+encodeURIComponent('Здравствуйте! Интересует '+p.name+'. Подскажите наличие и условия заказа на 5 или 10 мл.');link.target='_blank';link.rel='noopener noreferrer';card.append(link);catalog.append(card);
+ }
+}
+async function init(){try{const r=await fetch('/api/catalog');if(!r.ok)throw new Error('HTTP '+r.status);data=await r.json();for(const b of [...new Set(data.items.map(p=>p.brand))].sort()){const option=el('option',b);option.value=b;brand.append(option);}search.addEventListener('input',render);brand.addEventListener('change',render);render();}catch(e){status.textContent='Не удалось загрузить каталог. Попробуйте обновить страницу.';}}
+init();
+</script>
+</body>
+</html>
