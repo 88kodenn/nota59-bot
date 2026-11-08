@@ -36,7 +36,8 @@ def main():
     page = (BASE / 'web_catalog.html').read_bytes()
     extension = (BASE / 'note_pyramids.js').read_bytes()
     colors = (BASE / 'note_colors.js').read_bytes()
-    page = page.replace(b'</body>', b'<script>' + extension + b'</script><script>' + colors + b'</script></body>', 1)
+    rules = (BASE / 'web_rules.js').read_bytes()
+    page = page.replace(b'</body>', b'<script>' + extension + b'</script><script>' + colors + b'</script><script>' + rules + b'</script></body>', 1)
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
