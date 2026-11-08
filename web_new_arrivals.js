@@ -24,7 +24,7 @@ window.volume=function(v){
 window.render=function(){
  if(!data)return;
  const words=norm($('search').value.trim()).split(/\s+/).filter(Boolean);
- const items=data.items.filter(p=>(!onlyNew||p.isNew===true)&&(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.description,p.notes].join(' ')).includes(w)));
+ const items=data.items.filter(p=>(!onlyNew||p.isNew===true)&&(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.brand,p.description,p.notes,(window.nota59SearchAliases || {})[p.name] || ''].join(' ')).includes(w)));
  $('catalog').replaceChildren();$('status').textContent=items.length?items.length+' ароматов':'Нет совпадений — измените поиск';
  for(const p of items){
   const card=el('article',undefined,'card'),cover=visual(p),info=el('div',undefined,'info'),bottom=el('div',undefined,'bottom'),button=el('button','↗','more');
