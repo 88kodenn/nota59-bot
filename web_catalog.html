@@ -17,4 +17,44 @@ const noteArt={
 };
 function renderPyramid(p){const root=$('pyramid');root.replaceChildren();root.hidden=true;if(p.name!=='Kilian Angels Share')return;const levels=[['Верх:','Верхние ноты'],['Сердце:','Ноты сердца'],['База:','Базовые ноты']],lines=String(p.notes).split('\n');const groups=levels.map(([prefix,title])=>{const line=lines.find(s=>s.trim().startsWith(prefix));return {title,notes:line?line.trim().slice(prefix.length).replace(/\.$/,'').split(',').map(s=>s.trim()).filter(Boolean):[]};});if(groups.some(g=>!g.notes.length))return;for(const group of groups){const tier=el('section',undefined,'tier'),list=el('ul',undefined,'ingredients');tier.append(el('h4',group.title));for(const note of group.notes){const item=el('li',undefined,'ingredient'),svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 64');svg.setAttribute('aria-hidden','true');svg.setAttribute('fill','none');svg.setAttribute('stroke','#daba80');svg.setAttribute('stroke-width','1.6');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');svg.innerHTML=noteArt[norm(note)]||'<path d="M32 12l18 20-18 20-18-20z"/>';item.append(svg,el('span',note.charAt(0).toUpperCase()+note.slice(1)));list.append(item);}tier.append(list);root.append(tier);}root.append(el('p','Авторские иллюстрации нот. Гедион показан условным знаком.','pyramid-caption'));root.hidden=false;}
 function openProduct(p){selected=p;$('photo').replaceChildren(visual(p));$('maker').textContent=p.brand;$('title').textContent=p.name.startsWith(p.brand+' ')?p.name.slice(p.brand.length+1):p.name;$('description').textContent=p.description;$('notes').textContent=p.notes;renderPyramid(p);volume(5);$('dialog').showModal();$('dialog').scrollTop=0;document.body.classList.add('modal');}function render(){const words=norm($('search').value.trim()).split(/\s+/).filter(Boolean),items=data.items.filter(p=>(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.description,p.notes].join(' ')).includes(w)));$('catalog').replaceChildren();$('status').textContent=items.length?items.length+' ароматов':'Нет совпадений — измените поиск';for(const p of items){const card=el('article',undefined,'card'),info=el('div',undefined,'info'),bottom=el('div',undefined,'bottom'),button=el('button','↗','more');button.type='button';button.setAttribute('aria-label','Открыть аромат '+p.name);button.onclick=()=>openProduct(p);bottom.append(el('span','от '+money(Math.min(p.price5,p.price10)),'price'),button);info.append(el('p',p.brand,'brand'),el('h2',p.name.startsWith(p.brand+' ')?p.name.slice(p.brand.length+1):p.name,'name'),bottom);card.append(visual(p),info);$('catalog').append(card);}}$('close').onclick=()=>$('dialog').close();$('dialog').addEventListener('close',()=>document.body.classList.remove('modal'));$('v5').onclick=()=>volume(5);$('v10').onclick=()=>volume(10);async function init(){try{const r=await fetch('/api/catalog');if(!r.ok)throw Error(r.status);data=await r.json();for(const b of [...new Set(data.items.map(p=>p.brand))].sort()){const o=el('option',b);o.value=b;$('brand').append(o);}$('search').oninput=render;$('brand').onchange=render;render();}catch(e){$('status').textContent='Не удалось загрузить каталог. Обновите страницу.';}}init();
-</script></body></html>
+</script>
+<script>
+/* nota59-search-v2 */
+(() => {
+  const aliases = {"Amouage Interlude Man": "амуаж амуаж амуаже интерлюд интерлюд мэн", "Amouage Interlude Black Iris Man": "амуаж амуаж амуаже интерлюд блэк айрис ирис", "Clive Christian Jump Up And Kiss Me Hedonistic (2021)": "клайв кристиан гедонист гедонистик хедонистик", "Creed Aventus": "крид авентус", "Creed Absolu Aventus 2025": "крид абсолю абсолют авентус", "Essential Parfums Bois Imperial": "эссеншиал эссеншл парфюмс буа империал бойс империал", "Ex Nihilo Blue Talisman": "экс нихило экснихило блю талисман", "Ex Nihilo The Hedonist": "экс нихило экснихило гедонист хедонист", "Ex Nihilo The Hedonist Extrait": "экс нихило экснихило гедонист хедонист экстракт экстрат", "Jean Paul Gaultier Le Male Le Parfum": "жан поль готье готьер ле маль ле парфюм", "Jean Paul Gaultier Le Male Elixir": "жан поль готье готьер ле маль эликсир", "Kilian Angels Share": "килиан киллиан энджелс шер ангелс шейр доля ангелов", "Louis Vuitton Pacific Chill": "луи вуиттон виттон вьюттон пасифик пацифик чилл", "Maison Crivelli Oud Maracuja": "мезон кривелли уд маракуйя маракуя", "Parfums de Marly Althair": "парфюмс де марли альтаир алтаир", "Parfums de Marly Herod": "парфюмс де марли херод герод", "Tom Ford Grey Vetiver EDP": "том форд грей ветивер грэй", "Tom Ford Noir Extreme EDP": "том форд нуар экстрим", "Tom Ford Soleil Blanc EDP": "том форд солей блан солей бланк", "Viktor & Rolf Spicebomb": "виктор рольф спайсбомб спайс бомб"};
+  const search = document.getElementById('search');
+  const brand = document.getElementById('brand');
+  const normalizeSearch = value => String(value ?? '').normalize('NFKD').toLowerCase().replace(/ё/g, 'е').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const originalRender = render;
+  render = function () {
+    if (!data || !Array.isArray(data.items)) return;
+    const words = normalizeSearch(search.value).split(/\s+/).filter(Boolean);
+    const originalItems = data.items;
+    const query = search.value;
+    try {
+      data.items = originalItems.filter(item => words.every(word => normalizeSearch([item.name, item.brand, item.description, item.notes, aliases[item.name] || ''].join(' ')).includes(word)));
+      search.value = '';
+      originalRender();
+    } finally {
+      search.value = query;
+      data.items = originalItems;
+    }
+  };
+  search.setAttribute('enterkeyhint', 'search');
+  search.addEventListener('input', render);
+  brand.addEventListener('change', render);
+  const dismiss = () => { if (document.activeElement === search) search.blur(); };
+  search.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      render();
+      dismiss();
+    }
+  });
+  search.addEventListener('search', () => { render(); dismiss(); });
+  document.addEventListener('pointerdown', event => {
+    if (event.target !== search) dismiss();
+  }, {capture: true, passive: true});
+})();
+</script>
+</body></html>
