@@ -1,0 +1,89 @@
+name: Fix catalog search
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-catalog-search.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch catalog interface
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          import json
+          p = Path('web_catalog.html')
+          html = p.read_text(encoding='utf-8')
+          marker = '/* nota59-search-v2 */'
+          if marker in html:
+              raise SystemExit('Patch already applied; no changes made')
+          values = {}
+          for node in ast.parse(Path('main.py').read_text(encoding='utf-8')).body:
+              if isinstance(node, ast.Assign):
+                  for target in node.targets:
+                      if isinstance(target, ast.Name) and target.id in {'CATALOG', 'NAME_WORDS', 'BRAND_WORDS'}:
+                          values[target.id] = ast.literal_eval(node.value)
+          aliases = {}
+          for i, entry in enumerate(values['CATALOG']):
+              name = entry[0]
+              brand = next((b for b in values['BRAND_WORDS'] if name.startswith(b + ' ')), '')
+              names = values['NAME_WORDS']
+              aliases[name] = values['BRAND_WORDS'].get(brand, '') + ' ' + (names[i] if i < len(names) else '')
+          script = '''
+          <script>
+          /* nota59-search-v2 */
+          (() => {
+            const aliases = ALIASES_JSON;
+            const search = document.getElementById('search');
+            const brand = document.getElementById('brand');
+            const normalizeSearch = value => String(value ?? '').normalize('NFKD').toLowerCase().replace(/ё/g, 'е').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+            const originalRender = render;
+            render = function () {
+              if (!data || !Array.isArray(data.items)) return;
+              const words = normalizeSearch(search.value).split(/\s+/).filter(Boolean);
+              const originalItems = data.items;
+              const query = search.value;
+              try {
+                data.items = originalItems.filter(item => words.every(word => normalizeSearch([item.name, item.brand, item.description, item.notes, aliases[item.name] || ''].join(' ')).includes(word)));
+                search.value = '';
+                originalRender();
+              } finally {
+                search.value = query;
+                data.items = originalItems;
+              }
+            };
+            search.setAttribute('enterkeyhint', 'search');
+            search.addEventListener('input', render);
+            brand.addEventListener('change', render);
+            const dismiss = () => { if (document.activeElement === search) search.blur(); };
+            search.addEventListener('keydown', event => {
+              if (event.key === 'Enter' && !event.isComposing) {
+                event.preventDefault();
+                render();
+                dismiss();
+              }
+            });
+            search.addEventListener('search', () => { render(); dismiss(); });
+            document.addEventListener('pointerdown', event => {
+              if (event.target !== search) dismiss();
+            }, {capture: true, passive: true});
+          })();
+          </script>
+          '''.replace('ALIASES_JSON', json.dumps(aliases, ensure_ascii=False))
+          assert html.count('</body>') == 1
+          p.write_text(html.replace('</body>', script + '</body>'), encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- web_catalog.html
+          git commit -m 'fix: support Russian perfume search and dismiss keyboard'
+          git push origin HEAD:main
