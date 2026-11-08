@@ -29,15 +29,19 @@ def load_catalog():
                 image = '/photos/' + str(i)
                 photos[image] = path
         items.append(dict(name=name, brand=next((b for b in brands if name.startswith(b + ' ')), ''), price5=p5, price10=p10, description=description, notes=notes, image=image))
+    arrivals = json.loads((BASE / 'new_arrivals.json').read_text(encoding='utf-8'))
+    existing = {item['name'] for item in items}
+    for item in arrivals:
+        if item['name'] not in existing:
+            items.append(item)
+            existing.add(item['name'])
     return json.dumps(dict(items=items, seller=values['SELLER']), ensure_ascii=False).encode('utf-8'), photos
 
 def main():
     catalog, photos = load_catalog()
     page = (BASE / 'web_catalog.html').read_bytes()
-    extension = (BASE / 'note_pyramids.js').read_bytes()
-    colors = (BASE / 'note_colors.js').read_bytes()
-    rules = (BASE / 'web_rules.js').read_bytes()
-    page = page.replace(b'</body>', b'<script>' + extension + b'</script><script>' + colors + b'</script><script>' + rules + b'</script></body>', 1)
+    scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_new_arrivals.js'))
+    page = page.replace(b'</body>', scripts + b'</body>', 1)
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
