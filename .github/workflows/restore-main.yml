@@ -1,0 +1,32 @@
+name: Restore main.py
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-main.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore and validate main.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          current=$(git hash-object main.py)
+          if [ "$current" != "852421677f934c7a388bbdae17ed38cf356662de" ]; then
+            echo 'main.py changed since recovery was prepared; stopping to avoid overwriting changes.'
+            exit 1
+          fi
+          git show c394822691a51f214e155158fc07b33cf32089a2:main.py > main.py
+          test "$(git hash-object main.py)" = "5c90446c1d2fb33bfb7373ffd11eb7f4927a540a"
+          python -m py_compile main.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- main.py
+          git commit -m 'fix: restore main.py after accidental placeholder overwrite'
+          git push origin HEAD:main
