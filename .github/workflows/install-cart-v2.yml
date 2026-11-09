@@ -1,0 +1,88 @@
+name: Verify and install isolated cart
+on:
+  push:
+    branches: [main]
+    paths: ['web_cart.js', '.github/workflows/install-cart-v2.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare candidate without replacing catalog
+        run: |
+          set -euo pipefail
+          node --check web_cart.js
+          python - <<'PY'
+          from pathlib import Path
+          page=Path('web_catalog.html').read_text(encoding='utf-8')
+          assert page.lstrip().lower().startswith('<!doctype html>')
+          assert 'FULL_UPDATED_WEB_CATALOG_HTML_WITH_CART' not in page
+          assert 'id="catalog"' in page and 'id="order"' in page
+          marker='<!-- n59-cart-v2 -->'
+          if marker in page:
+              page=page[:page.index(marker)]+page[page.index('<!-- /n59-cart-v2 -->')+len('<!-- /n59-cart-v2 -->'):]
+          js=Path('web_cart.js').read_text(encoding='utf-8')
+          assert '</script' not in js.lower()
+          assert page.count('</body>')==1
+          candidate=page.replace('</body>',marker+'<script>\n'+js+'\n</script><!-- /n59-cart-v2 --></body>')
+          Path('/tmp/cart-candidate.html').write_text(candidate,encoding='utf-8')
+          PY
+      - name: Install browser test dependencies
+        run: |
+          npm install --prefix /tmp/n59-cart-check playwright@1.56.1
+          /tmp/n59-cart-check/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exercise cart and catalog in browser
+        run: |
+          node <<'JS'
+          const {chromium}=require('/tmp/n59-cart-check/node_modules/playwright');
+          const fs=require('fs'),assert=require('node:assert/strict');
+          (async()=>{
+            const browser=await chromium.launch();
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            const fixture={seller:'nota59_test',items:[{brand:'Test House',name:'Test House Alpha',price5:500,price10:900,description:'Описание Alpha',notes:'Ноты Alpha'},{brand:'Test House',name:'Test House Beta',price5:700,price10:1200,description:'Описание Beta',notes:'Ноты Beta'}]};
+            const source=fs.readFileSync('/tmp/cart-candidate.html','utf8');
+            await page.route('**/*',route=>{const url=new URL(route.request().url());if(url.pathname==='/api/catalog')return route.fulfill({json:fixture});if(url.hostname==='cart.test')return route.fulfill({contentType:'text/html',body:source});return route.abort();});
+            await page.goto('https://cart.test/');
+            await page.locator('#catalog .more').first().waitFor();
+            assert.equal(await page.locator('#catalog .card').count(),2);
+            await page.locator('#catalog .more').first().click();
+            await page.locator('#v10').click();await page.locator('#n59-add').click();await page.locator('#close').click();
+            await page.locator('#catalog .more').nth(1).click();await page.locator('#n59-add').click();await page.locator('#close').click();
+            await page.locator('#n59-cart').click();
+            assert.equal(await page.locator('.n59-row').count(),2);
+            assert((await page.locator('#n59-total').innerText()).replace(/\s/g,'').includes('1600'));
+            const draft=new URL(await page.locator('#n59-checkout').getAttribute('href')).searchParams.get('text');
+            assert(draft.includes('Alpha')&&draft.includes('Beta')&&draft.includes('10 мл')&&draft.includes('5 мл'));
+            await page.locator('[data-action=plus]').first().click();
+            assert((await page.locator('#n59-total').innerText()).replace(/\s/g,'').includes('2500'));
+            await page.keyboard.press('Escape');await page.reload();await page.locator('#catalog .more').first().waitFor();await page.locator('#n59-cart').click();
+            assert.equal(await page.locator('.n59-row').count(),2);
+            await page.locator('[data-action=minus]').first().click();
+            await page.locator('[data-action=remove]').nth(1).click();
+            assert.equal(await page.locator('.n59-row').count(),1);
+            await page.locator('[data-action=remove]').first().click();assert.equal(await page.locator('#n59-checkout').getAttribute('href'),null);
+            await page.keyboard.press('Escape');await page.locator('#search').fill('Beta');assert.equal(await page.locator('#catalog .card').count(),1);
+            await page.reload();await page.locator('#catalog .more').first().waitFor();
+            await page.evaluate(()=>localStorage.setItem('nota59-cart-v2','broken JSON'));await page.reload();await page.locator('#catalog .more').first().waitFor();assert.equal(await page.locator('#catalog .card').count(),2);
+            assert.deepEqual(errors,[]);await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1);});
+          JS
+      - name: Publish only after successful tests
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_HEAD"
+          cp /tmp/cart-candidate.html web_catalog.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web_catalog.html
+          git diff --cached --quiet || git commit -m 'feat: connect verified multi-item cart'
+          git push origin HEAD:main
