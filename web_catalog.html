@@ -71,6 +71,7 @@ const style=make('style');style.textContent=`
 #n59-cart{position:static;min-height:44px;border:1px solid var(--gold);border-radius:9px;padding:10px 14px;background:#211b13;color:var(--gold);font:600 13px var(--sans);box-shadow:none;white-space:normal}
 .top{flex-wrap:wrap}#n59-navigation.n59-with-cart{grid-template-columns:repeat(3,minmax(0,1fr))}#n59-navigation #n59-cart{position:relative;min-width:0;width:100%;border:0;border-radius:0;letter-spacing:0;gap:4px;padding:10px 3px;background:none;color:var(--gold);white-space:normal;font:500 11px/1.4 var(--sans)}#n59-navigation #n59-cart svg{width:24px;height:24px}#n59-cart-count{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 #n59-add,#n59-detail-cart{border:1px solid var(--gold);background:#211b13;color:var(--gold);padding:12px;border-radius:7px;min-height:44px;width:100%;font-size:14px}.purchase{flex-wrap:wrap;background:#14120f!important}#n59-panel{padding:18px}#n59-panel h2{font:600 32px var(--serif);margin:0;color:var(--gold)}.n59-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.n59-head button{width:44px;height:44px;background:#211b13;color:var(--gold);border:1px solid var(--line);border-radius:50%;font-size:24px}.n59-row{border-bottom:1px solid var(--line);padding:16px 0;overflow-wrap:anywhere}.n59-row p{margin:5px 0;font-size:14px}.n59-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}.n59-controls button{min-width:44px;min-height:44px;border:1px solid var(--line);background:#211b13;color:var(--gold);border-radius:7px}.n59-controls span{min-width:24px;text-align:center}#n59-checkout{display:block;margin:16px 0}#n59-total{font-size:20px;color:var(--gold)}#n59-message{font-size:13px;line-height:1.6;color:var(--muted)}#n59-notice{display:block;font-size:12px;color:var(--gold);flex-basis:100%;overflow-wrap:anywhere}#n59-notice:empty{display:none}#n59-selection{font-size:13px;line-height:1.6;color:var(--gold);margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:8px}#n59-checkout[aria-disabled=true]{opacity:.5;pointer-events:none}
+#n59-selection .n59-controls{margin:0;gap:12px}#n59-selection button{font-size:22px;touch-action:manipulation}#n59-selection button:disabled{opacity:.35}#n59-selected-qty{min-width:48px;font-variant-numeric:tabular-nums}#n59-selected-total{margin:8px 0 0}
 `;document.head.append(style);
 const panel=make('dialog');panel.id='n59-panel';panel.setAttribute('aria-labelledby','n59-title');const head=make('div',undefined,'n59-head'),title=make('h2','Корзина');title.id='n59-title';head.append(title,button('×',()=>panel.close(),'Закрыть корзину'));
 const list=make('div'),total=make('p'),message=make('p'),checkout=make('a','Обсудить весь заказ ↗','order');list.id='n59-items';total.id='n59-total';message.id='n59-message';message.setAttribute('role','status');checkout.id='n59-checkout';checkout.target='_blank';checkout.rel='noopener noreferrer';checkout.onclick=e=>{if(checkout.getAttribute('aria-disabled')==='true')e.preventDefault();};panel.append(head,list,total,checkout,message);document.body.append(panel);
@@ -80,9 +81,32 @@ const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.set
 const fallback=document.querySelector('.top')||document.body;fallback.append(fab);
 function placeCart(){const nav=$('n59-navigation');if(nav&&fab.parentNode!==nav){nav.classList.add('n59-with-cart');nav.append(fab);}}
 new MutationObserver(placeCart).observe(document.body,{childList:true});placeCart();
-const notice=make('span');notice.id='n59-notice';notice.setAttribute('role','status');const selection=make('p');selection.id='n59-selection';selection.setAttribute('aria-live','polite');document.querySelector('#dialog .volumes').after(selection);
+const notice=make('span');notice.id='n59-notice';notice.setAttribute('role','status');const selection=make('div');selection.id='n59-selection';document.querySelector('#dialog .volumes').after(selection);
 const detailCart=button('Открыть корзину',openCart);detailCart.id='n59-detail-cart';
-function selectedCount(){if(typeof selected==='undefined'||!selected)return;const v=$('v10').getAttribute('aria-pressed')==='true'?10:5;const matches=rows.filter(r=>r.name===selected.name&&r.brand===selected.brand);const qty=matches.filter(r=>r.volume===v).reduce((s,r)=>s+r.qty,0),ml=matches.reduce((s,r)=>s+r.qty*r.volume,0);selection.textContent='В корзине: '+qty+' шт. по '+v+' мл. Всего этого аромата: '+ml+' мл.';}
+const selectedVolume=()=>$('v10').getAttribute('aria-pressed')==='true'?10:5;
+function currentRow(){if(typeof selected==='undefined'||!selected)return null;return rows.find(r=>r.name===selected.name&&r.brand===selected.brand&&r.volume===selectedVolume())||null;}
+function changeSelected(delta){
+if(typeof selected==='undefined'||!selected)return;
+notice.textContent='';const r=currentRow();
+if(delta<0){if(!r)return;if(r.qty===1)rows.splice(rows.indexOf(r),1);else r.qty--;persist();return;}
+const next={name:selected.name,brand:selected.brand,volume:selectedVolume(),qty:1};
+if(price(next)===null){notice.textContent='Для этого объёма нет актуальной цены.';return;}
+if(r){if(r.qty>=99){notice.textContent='Максимум 99 штук на позицию.';return;}r.qty++;}
+else{if(rows.length>=20){notice.textContent='Максимум 20 разных позиций в одном заказе.';return;}rows.push(next);}
+persist();
+}
+const selectedControls=make('div',undefined,'n59-controls'),volumeLabel=make('span'),qtyLabel=make('span'),selectedTotal=make('p');
+qtyLabel.id='n59-selected-qty';qtyLabel.setAttribute('aria-live','polite');selectedTotal.id='n59-selected-total';
+const selectedMinus=button('−',()=>changeSelected(-1),'Уменьшить количество выбранного объёма'),selectedPlus=button('+',()=>changeSelected(1),'Увеличить количество выбранного объёма');
+selectedMinus.id='n59-selected-minus';selectedPlus.id='n59-selected-plus';selectedControls.append(volumeLabel,selectedMinus,qtyLabel,selectedPlus);selection.append(selectedControls,selectedTotal);
+function selectedCount(){
+if(typeof selected==='undefined'||!selected)return;
+const v=selectedVolume(),r=currentRow(),qty=r?r.qty:0;
+const ml=rows.filter(x=>x.name===selected.name&&x.brand===selected.brand).reduce((s,x)=>s+x.qty*x.volume,0);
+volumeLabel.textContent=v+' мл';qtyLabel.textContent=qty+' шт.';selectedMinus.disabled=qty===0;
+selectedPlus.disabled=qty>=99||(!r&&rows.length>=20)||price({name:selected.name,brand:selected.brand,volume:v})===null;
+selectedTotal.textContent='Всего этого аромата в корзине: '+ml+' мл.';
+}
 function persist(){try{localStorage.setItem(key,JSON.stringify(rows));storageOK=true;}catch(e){storageOK=false;}draw();}
 function draw(){
 list.replaceChildren();let sum=0,invalid=false;
@@ -95,9 +119,9 @@ const enabled=rows.length>0&&!invalid&&text.length<=3500&&/^[A-Za-z0-9_]+$/.test
 checkout.setAttribute('aria-disabled',String(!enabled));if(enabled)checkout.href='https://t.me/'+encodeURIComponent(seller)+'?text='+encodeURIComponent(text);else checkout.removeAttribute('href');
 message.textContent=(storageOK?'':'Сохранение недоступно: выбор действует только до закрытия страницы. ')+(invalid?'Часть позиций недоступна. Удалите их перед заказом.':text.length>3500?'Слишком длинный заказ. Уменьшите число позиций.':'Откроется черновик сообщения продавцу. Проверьте его и нажмите «Отправить» в Telegram. Наличие и доставка уточняются отдельно.');
 }
-const add=button('В корзину',()=>{if(typeof selected==='undefined'||!selected)return;const v=$('v10').getAttribute('aria-pressed')==='true'?10:5;const r={name:selected.name,brand:selected.brand,volume:v,qty:1};if(price(r)===null){notice.textContent='Для этого объёма нет актуальной цены.';return;}const found=rows.find(x=>x.name===r.name&&x.brand===r.brand&&x.volume===v);if(found){if(found.qty>=99){notice.textContent='Максимум 99 штук на позицию.';return;}found.qty++;}else{if(rows.length>=20){notice.textContent='Максимум 20 разных позиций в одном заказе.';return;}rows.push(r);}persist();notice.textContent='Добавлена 1 шт. по '+v+' мл. Количество указано под выбором объёма.';});add.id='n59-add';$('order').after(add,detailCart,notice);
+const add=button('В корзину',()=>changeSelected(1));add.id='n59-add';$('order').after(add,detailCart,notice);
 new MutationObserver(()=>{notice.textContent='';selectedCount();}).observe($('title'),{childList:true});
-new MutationObserver(selectedCount).observe(document.querySelector('#dialog .volumes'),{attributes:true,subtree:true,attributeFilter:['aria-pressed']});
+new MutationObserver(()=>{notice.textContent='';selectedCount();}).observe(document.querySelector('#dialog .volumes'),{attributes:true,subtree:true,attributeFilter:['aria-pressed']});
 new MutationObserver(draw).observe($('catalog'),{childList:true});
 panel.addEventListener('close',()=>fab.focus());draw();
 })();
