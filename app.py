@@ -7,6 +7,7 @@ import runpy
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
+from catalog_note_fixes import apply_note_fixes
 
 BASE = Path(__file__).resolve().parent
 logger = logging.getLogger('catalog.app')
@@ -84,6 +85,7 @@ def load_catalog():
             items.append(arrival)
             existing.add(arrival['name'])
 
+    apply_note_fixes(items)
     return json.dumps(dict(items=items, seller=values['SELLER']), ensure_ascii=False).encode('utf-8'), photos
 
 
