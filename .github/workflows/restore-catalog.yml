@@ -1,0 +1,29 @@
+name: Restore working catalog
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-catalog.yml']
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Revert broken placeholder commit
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_HEAD"
+          test "$(git rev-parse HEAD^)" = 'b9b8c332f5304672b2a7453a6bfaa2ab8bd9c932'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git revert --no-edit b9b8c332f5304672b2a7453a6bfaa2ab8bd9c932
+          grep -qi '<!doctype html>' web_catalog.html
+          grep -q 'id="catalog"' web_catalog.html
+          if grep -q 'FULL_UPDATED_WEB_CATALOG_HTML_WITH_CART' web_catalog.html; then exit 1; fi
+          git push origin HEAD:main
