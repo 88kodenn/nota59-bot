@@ -1,0 +1,29 @@
+name: Revert brand installation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/revert-brand-install.yml']
+permissions:
+  contents: write
+concurrency:
+  group: revert-brand-install
+  cancel-in-progress: false
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Revert approved installation commit
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_HEAD"
+          test "$(git rev-parse HEAD^)" = '5046dd90e76f80d1647592a7991c00324bf37f1f'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git revert --no-edit 5046dd90e76f80d1647592a7991c00324bf37f1f
+          git push origin HEAD:main
