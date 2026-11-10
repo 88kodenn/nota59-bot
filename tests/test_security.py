@@ -58,7 +58,7 @@ class LinkValidationTests(unittest.TestCase):
 
 class CatalogTests(unittest.TestCase):
     def test_catalog_not_lost(self):
-        self.assertEqual(len(bot.PERFUMES), 20)
+        self.assertEqual(len(bot.PERFUMES), 28)
         self.assertEqual(bot.PERFUMES['Creed Aventus']['price5'], 1400)
         self.assertEqual(bot.PERFUMES['Louis Vuitton Pacific Chill']['price10'], 3600)
         self.assertEqual(bot.PERFUMES['Tom Ford Grey Vetiver EDP']['price10'], 1800)
@@ -68,8 +68,8 @@ class CatalogTests(unittest.TestCase):
     def test_search(self):
         self.assertEqual(len(bot.find_perfumes('авентус')), 2)
         self.assertEqual(len(bot.find_perfumes('ИНТЕРЛЮД')), 2)
-        self.assertEqual(len(bot.find_perfumes('том форд')), 3)
-        self.assertEqual(len(bot.find_perfumes('Tom Ford')), 3)
+        self.assertEqual(len(bot.find_perfumes('том форд')), 6)
+        self.assertEqual(len(bot.find_perfumes('Tom Ford')), 6)
         self.assertEqual(bot.find_perfumes(''), [])
         self.assertEqual(bot.find_perfumes('неттакогоаромата'), [])
 
