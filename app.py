@@ -29,6 +29,19 @@ def _safe_photo_path(raw):
     return path
 
 
+def load_picker_categories():
+    try:
+        tree = ast.parse((BASE / 'scent_picker.py').read_text(encoding='utf-8'))
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'CATEGORIES' for t in node.targets):
+                categories = ast.literal_eval(node.value)
+                if isinstance(categories, dict):
+                    return {key: list(names) for key, names in categories.items() if isinstance(key, str) and isinstance(names, (list, tuple)) and all(isinstance(name, str) for name in names)}
+    except (OSError, SyntaxError, ValueError, TypeError):
+        logger.exception('Не удалось загрузить подборки ароматов')
+    return {}
+
+
 def load_catalog():
     tree = ast.parse((BASE / 'main.py').read_text(encoding='utf-8'))
     values = {}
@@ -86,13 +99,13 @@ def load_catalog():
             existing.add(arrival['name'])
 
     apply_note_fixes(items)
-    return json.dumps(dict(items=items, seller=values['SELLER']), ensure_ascii=False).encode('utf-8'), photos
+    return json.dumps(dict(items=items, seller=values['SELLER'], pickerCategories=load_picker_categories()), ensure_ascii=False).encode('utf-8'), photos
 
 
 def main():
     catalog, photos = load_catalog()
     page = (BASE / 'web_catalog.html').read_bytes()
-    scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_new_arrivals.js', 'note-realistic-icons.js', 'brand_ui.js'))
+    scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_new_arrivals.js', 'note-realistic-icons.js', 'brand_ui.js', 'web_picker.js'))
     page = page.replace(b'</body>', scripts + b'</body>', 1)
     # Keep legacy DOM anchors for cart initialization; hide only redundant product actions.
     purchase_style = b'''<style id="n59-compact-purchase">
