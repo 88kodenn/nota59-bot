@@ -15,6 +15,7 @@ let onlyNew=false;
 function switchTo(value){onlyNew=value;all.setAttribute('aria-pressed',String(!value));fresh.setAttribute('aria-pressed',String(value));if(data)window.render();}
 all.onclick=()=>switchTo(false);fresh.onclick=()=>switchTo(true);
 const priced=value=>typeof value==='number'&&Number.isFinite(value)&&value>0;
+const brandSearchAliases={'tom ford':'том форд'};
 window.volume=function(v){
  $('v5').setAttribute('aria-pressed',String(v===5));$('v10').setAttribute('aria-pressed',String(v===10));
  const price=v===5?selected.price5:selected.price10,hasPrice=priced(price);
@@ -24,7 +25,7 @@ window.volume=function(v){
 window.render=function(){
  if(!data)return;
  const words=norm($('search').value.trim()).split(/\s+/).filter(Boolean);
- const items=data.items.filter(p=>(!onlyNew||p.isNew===true)&&(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.brand,p.description,p.notes,(window.nota59SearchAliases || {})[p.name] || ''].join(' ')).includes(w)));
+ const items=data.items.filter(p=>(!onlyNew||p.isNew===true)&&(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.brand,p.description,p.notes,(window.nota59SearchAliases || {})[p.name] || '',brandSearchAliases[norm(String(p.brand||'').trim())] || ''].join(' ')).includes(w)));
  $('catalog').replaceChildren();$('status').textContent=items.length?items.length+' ароматов':'Нет совпадений — измените поиск';
  for(const p of items){
   const card=el('article',undefined,'card'),cover=visual(p),info=el('div',undefined,'info'),bottom=el('div',undefined,'bottom'),button=el('button','↗','more');
