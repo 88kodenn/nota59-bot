@@ -31,3 +31,30 @@ window.addEventListener('resize',measure,{passive:true});
 if(media.addEventListener)media.addEventListener('change',measure);else media.addListener(measure);
 measure();
 })();
+
+(() => {
+'use strict';
+const make=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
+const header=document.querySelector('.top .micro');
+if(header)header.replaceChildren(document.createTextNode('Люксовая и нишевая'),make('br'),document.createTextNode('парфюмерия в распив'));
+const hero=document.querySelector('.hero'),heading=hero?.querySelector('h1');
+if(heading)heading.replaceChildren(document.createTextNode('Небольшой объём.'),make('br'),make('em','Никаких лишних трат.'));
+if(!hero||document.getElementById('n59-decant-info'))return;
+const details=make('details');details.id='n59-decant-info';
+const summary=make('summary','Что такое распив?');details.append(summary);
+const body=make('div');body.className='n59-decant-copy';
+for(const text of [
+'Распив — это часть оригинального аромата в небольшом атомайзере с распылителем. Из большого флакона отбирается нужный объём — 5 или 10 мл.',
+'Парфюм не разбавляется и не смешивается с другими составами. Это не реплика и не клон, а аромат из оригинального флакона в удобном небольшом объёме.',
+'Так можно познакомиться с ароматом и поносить его перед покупкой полноразмерного флакона.'
+])body.append(make('p',text));
+details.append(body);hero.after(details);
+const style=make('style');style.textContent=`
+#n59-decant-info{margin:12px 0 0;border:1px solid var(--line);border-radius:10px;background:#191610;color:var(--text)}
+#n59-decant-info>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:13px 16px;list-style:none;color:var(--gold);font:500 13px/1.5 var(--sans);cursor:pointer;touch-action:manipulation}
+#n59-decant-info>summary::-webkit-details-marker{display:none}#n59-decant-info>summary::after{content:'+';font:400 20px/1 var(--sans)}#n59-decant-info[open]>summary::after{content:'−'}#n59-decant-info>summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:9px}
+#n59-decant-info .n59-decant-copy{padding:0 16px 16px}#n59-decant-info p{margin:12px 0 0;color:var(--muted);font:400 14px/1.75 var(--sans);overflow-wrap:anywhere}
+`;document.head.append(style);
+const sync=()=>details.classList.toggle('n59-rules-hidden',hero.classList.contains('n59-rules-hidden'));
+sync();new MutationObserver(sync).observe(hero,{attributes:true,attributeFilter:['class']});
+})();
