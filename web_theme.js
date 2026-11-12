@@ -58,3 +58,26 @@ const style=make('style');style.textContent=`
 const sync=()=>details.classList.toggle('n59-rules-hidden',hero.classList.contains('n59-rules-hidden'));
 sync();new MutationObserver(sync).observe(hero,{attributes:true,attributeFilter:['class']});
 })();
+
+(() => {
+'use strict';
+if(document.getElementById('n59-card-cart-ui'))return;
+const style=document.createElement('style');style.id='n59-card-cart-ui';style.textContent=`
+#catalog .card .bottom{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:stretch}
+#catalog .bottom .price{white-space:normal;overflow-wrap:anywhere}
+#catalog .bottom .more{display:flex;align-items:center;justify-content:center;width:100%;height:auto;min-width:0;min-height:44px;padding:11px 8px;border:1px solid #b58a4666;border-radius:8px;background:#c89e4b12;color:var(--gold);font:500 13px/1.4 var(--sans);touch-action:manipulation}
+#catalog .bottom .more:active{background:#dfbb7826}#catalog .bottom .more:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+#n59-panel{padding:0 18px 18px;scroll-padding-top:84px}
+#n59-panel .n59-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 -18px 12px;padding:14px 18px;background:#14120f;border-bottom:1px solid var(--line)}
+#n59-panel .n59-head h2{min-width:0;overflow-wrap:anywhere}
+#n59-panel .n59-head button{flex-shrink:0;min-width:44px;min-height:44px;touch-action:manipulation}
+#n59-panel #n59-clear{display:block;width:auto;max-width:100%;min-height:44px;margin:8px 0 16px auto;padding:10px 6px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font:400 12px/1.5 var(--sans);text-align:right;touch-action:manipulation}
+#n59-panel #n59-clear:disabled{opacity:.35}#n59-panel #n59-clear:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media(hover:hover) and (pointer:fine){#catalog .bottom .more:hover{background:#dfbb7826}#n59-panel #n59-clear:not(:disabled):hover{color:var(--gold);text-decoration:underline}}
+@media(max-width:699px){#n59-panel{padding:0 16px 16px}#n59-panel .n59-head{margin:0 -16px 12px;padding:12px 16px}}
+`;document.head.append(style);
+const catalog=document.getElementById('catalog');if(!catalog)return;
+function patch(root){if(!(root instanceof Element))return;const buttons=root.matches('.more')?[root]:root.querySelectorAll('.more');for(const button of buttons){if(button.textContent!=='Подробнее')button.textContent='Подробнее';}}
+patch(catalog);
+new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)patch(node);}).observe(catalog,{childList:true,subtree:true});
+})();
