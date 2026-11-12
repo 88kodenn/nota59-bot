@@ -16,7 +16,6 @@ const style=el('style');style.textContent=`
 .bp-logo{width:68px;height:44px;flex-shrink:0;display:grid;place-items:center;border:1px solid #d1bf9c55;background:#f5f0e6;border-radius:7px;padding:5px;overflow:hidden}
 .bp-logo img{width:100%;height:100%;object-fit:contain;display:block}.bp-logo:has(.bp-white){background:#17140f}
 .bp-logo img.bp-white{filter:none}.bp-copy{flex:1;min-width:0}.bp-copy small{display:block;color:var(--muted);font:11px var(--sans);margin-top:5px}
-.brand .bp-logo{display:inline-flex;width:48px;height:30px;margin-right:8px;vertical-align:middle}
 .bp-empty{padding:16px;color:var(--muted)}
 @media(prefers-reduced-motion:reduce){#brand-panel[open]{animation:none}}
 `;document.head.append(style);
@@ -25,9 +24,7 @@ const trigger=el('button','Все бренды ⌄');trigger.id='brand-open';tri
 const panel=el('dialog');panel.id='brand-panel';panel.setAttribute('aria-labelledby','bp-heading');const head=el('div',undefined,'bp-head'),title=el('h2','Парфюмерные дома'),close=el('button','×','close');title.id='bp-heading';close.type='button';close.setAttribute('aria-label','Закрыть выбор бренда');head.append(title,close);
 const search=el('input',undefined,'bp-search');search.type='search';search.placeholder='Найти бренд';search.setAttribute('aria-label','Поиск бренда');const list=el('div',undefined,'bp-list');panel.append(head,search,list);document.body.append(panel);
 function draw(){trigger.textContent=(s.selectedOptions[0]?.textContent||'Все бренды')+' ⌄';list.replaceChildren();const q=search.value.trim().toLowerCase();let found=0;for(const o of s.options){if(o.value&&!o.textContent.toLowerCase().includes(q))continue;found++;const row=el('button',undefined,'bp-row');row.type='button';row.setAttribute('aria-pressed',String(o.value===s.value));const logo=image(o.value);if(logo)row.append(logo);const copy=el('span',o.textContent,'bp-copy');if(typeof data!=='undefined'&&data?.items)copy.append(el('small','Ароматов: '+data.items.filter(p=>!o.value||p.brand===o.value).length));row.append(copy);if(o.value===s.value){const tick=el('span','✓');tick.setAttribute('aria-hidden','true');row.append(tick);}row.onclick=()=>{s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));panel.close();draw();};list.append(row);}if(!found)list.append(el('p','Бренд не найден','bp-empty'));}
-trigger.onclick=()=>{search.value='';draw();panel.showModal();trigger.setAttribute('aria-expanded','true');close.focus();};close.onclick=()=>panel.close();panel.addEventListener('close',()=>{trigger.setAttribute('aria-expanded','false');trigger.focus();});search.oninput=draw;s.addEventListener('change',draw);new MutationObserver(draw).observe(s,{childList:true,subtree:true});
-function decorate(){for(const n of document.querySelectorAll('#catalog .brand,#maker')){if(n.querySelector('img'))continue;const brand=n.textContent.trim(),logo=image(brand);if(logo)n.prepend(logo);}}
-new MutationObserver(decorate).observe(document.getElementById('catalog'),{childList:true,subtree:true});new MutationObserver(decorate).observe(document.getElementById('maker'),{childList:true});decorate();draw();
+trigger.onclick=()=>{search.value='';draw();panel.showModal();trigger.setAttribute('aria-expanded','true');close.focus();};close.onclick=()=>panel.close();panel.addEventListener('close',()=>{trigger.setAttribute('aria-expanded','false');trigger.focus();});search.oninput=draw;s.addEventListener('change',draw);new MutationObserver(draw).observe(s,{childList:true,subtree:true});draw();
 })();
 
 (() => {
