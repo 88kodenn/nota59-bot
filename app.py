@@ -105,7 +105,7 @@ def load_catalog():
 def main():
     catalog, photos = load_catalog()
     page = (BASE / 'web_catalog.html').read_bytes()
-    scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('web_picker.js', 'note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_theme.js', 'web_new_arrivals.js', 'note-realistic-icons.js', 'brand_ui.js'))
+    scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('web_picker.js', 'note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_theme.js', 'web_new_arrivals.js', 'web_enhancements.js', 'note-realistic-icons.js', 'brand_ui.js'))
     page = page.replace(b'</body>', scripts + b'</body>', 1)
     # Keep legacy DOM anchors for cart initialization; hide only redundant product actions.
     purchase_style = b'''<style id="n59-compact-purchase">
