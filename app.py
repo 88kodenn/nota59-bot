@@ -94,6 +94,15 @@ def main():
     page = (BASE / 'web_catalog.html').read_bytes()
     scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_new_arrivals.js', 'note-realistic-icons.js'))
     page = page.replace(b'</body>', scripts + b'</body>', 1)
+    # Keep legacy DOM anchors for cart initialization; hide only redundant product actions.
+    purchase_style = b'''<style id="n59-compact-purchase">
+#dialog #order,#dialog #n59-add,#dialog .detail > .hint{display:none!important}
+#dialog .purchase{display:grid!important;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:10px 14px max(10px,env(safe-area-inset-bottom))}
+#dialog #n59-detail-cart{min-width:0;width:100%;margin:0}
+#dialog #n59-notice{grid-column:1/-1}
+@media(max-width:360px){#dialog .purchase{grid-template-columns:minmax(0,1fr)}#dialog #chosen{font-size:18px}}
+</style>'''
+    page = page.replace(b'</head>', purchase_style + b'</head>', 1)
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
