@@ -29,3 +29,28 @@ trigger.onclick=()=>{search.value='';draw();panel.showModal();trigger.setAttribu
 function decorate(){for(const n of document.querySelectorAll('#catalog .brand,#maker')){if(n.querySelector('img'))continue;const brand=n.textContent.trim(),logo=image(brand);if(logo)n.prepend(logo);}}
 new MutationObserver(decorate).observe(document.getElementById('catalog'),{childList:true,subtree:true});new MutationObserver(decorate).observe(document.getElementById('maker'),{childList:true});decorate();draw();
 })();
+
+(() => {
+'use strict';
+const brand=document.getElementById('brand'),catalog=document.getElementById('catalog'),tools=document.querySelector('.tools');
+if(!brand||!catalog||!tools||document.getElementById('n59-active-brand'))return;
+const make=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
+const row=make('div');row.id='n59-active-brand';row.hidden=true;row.setAttribute('role','group');row.setAttribute('aria-label','Выбранный бренд');
+const chip=make('button'),label=make('span'),cross=make('span','×'),reset=make('button','Сбросить');chip.type=reset.type='button';chip.className='n59-brand-chip';reset.className='n59-brand-reset';cross.setAttribute('aria-hidden','true');chip.append(label,cross);row.append(chip,reset);tools.after(row);
+function sync(){const selected=brand.value;row.hidden=!selected||catalog.classList.contains('n59-rules-hidden');label.textContent=brand.selectedOptions[0]?.textContent||selected;chip.setAttribute('aria-label','Убрать фильтр бренда '+label.textContent);reset.setAttribute('aria-label','Сбросить выбранный бренд');}
+function clear(){brand.value='';brand.dispatchEvent(new Event('change',{bubbles:true}));sync();document.getElementById('brand-open')?.focus({preventScroll:true});}
+chip.addEventListener('click',clear);reset.addEventListener('click',clear);brand.addEventListener('change',sync);new MutationObserver(sync).observe(brand,{childList:true,subtree:true});new MutationObserver(sync).observe(catalog,{attributes:true,attributeFilter:['class']});
+const style=make('style');style.textContent=`
+#n59-active-brand{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 12px}#n59-active-brand[hidden]{display:none}
+#n59-active-brand button{min-height:44px;max-width:100%;font:500 12px/1.5 var(--sans);touch-action:manipulation;cursor:pointer}
+#n59-active-brand .n59-brand-chip{display:inline-flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:#211b13;color:var(--gold);text-align:left}
+#n59-active-brand .n59-brand-chip span:first-child{overflow-wrap:anywhere}#n59-active-brand .n59-brand-chip span:last-child{flex-shrink:0;font-size:20px;line-height:1}
+#n59-active-brand .n59-brand-reset{padding:9px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted)}
+#n59-active-brand button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}#n59-active-brand button:active{background:#dfbb7818}
+#catalog .bottom .price{white-space:normal;overflow-wrap:anywhere}
+`;document.head.append(style);
+const money=new Intl.NumberFormat('ru-RU');
+function patchPrices(cards){const items=typeof data!=='undefined'&&Array.isArray(data?.items)?data.items:[];const lookup=new Map(items.map(p=>['Открыть аромат '+p.name,p]));for(const card of cards){const button=card.querySelector('.more'),price=card.querySelector('.price');if(!button||!price)continue;const product=lookup.get(button.getAttribute('aria-label'));if(!product)continue;const value=product.price5;const text=typeof value==='number'&&Number.isFinite(value)&&value>0?'5 мл — '+money.format(value)+' ₽':'5 мл — уточните цену';if(price.textContent!==text)price.textContent=text;}}
+new MutationObserver(records=>{const cards=[];for(const record of records)for(const node of record.addedNodes){if(!(node instanceof Element))continue;if(node.matches('.card'))cards.push(node);else cards.push(...node.querySelectorAll('.card'));}if(cards.length)patchPrices(cards);}).observe(catalog,{childList:true});
+sync();patchPrices(catalog.querySelectorAll('.card'));
+})();
