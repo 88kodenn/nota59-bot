@@ -3,8 +3,8 @@
 const section=document.querySelector('.wrap > .section');if(!section||document.getElementById('n59-arrival-tabs'))return;
 const style=document.createElement('style');style.textContent=`
 .wrap>.section{flex-wrap:wrap}
-#n59-arrival-tabs{display:flex;flex-wrap:wrap;gap:6px 18px;flex-basis:100%;border-bottom:1px solid var(--line);margin-top:8px}
-#n59-arrival-tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:12px 0;min-height:44px;max-width:100%;font:500 13px/1.5 var(--sans);text-align:left;white-space:normal;overflow-wrap:anywhere}
+#n59-arrival-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:8px;flex-basis:100%;width:100%;min-width:0;border-bottom:1px solid var(--line);margin-top:8px}
+#n59-arrival-tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:12px 3px;min-height:52px;min-width:0;max-width:100%;font:500 12px/1.5 var(--sans);text-align:center;white-space:normal;overflow-wrap:anywhere}
 #n59-arrival-tabs button[aria-pressed=true]{border-bottom-color:var(--gold);color:var(--gold)}
 .n59-new-badge{position:absolute;right:9px;top:9px;padding:5px 7px;background:#18140fe6;border:1px solid var(--line);border-radius:5px;font:500 10px var(--sans);color:var(--gold)}
 .price.n59-inquire{font-size:12px;white-space:normal;color:var(--muted)}
