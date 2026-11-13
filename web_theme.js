@@ -81,3 +81,35 @@ function patch(root){if(!(root instanceof Element))return;const buttons=root.mat
 patch(catalog);
 new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)patch(node);}).observe(catalog,{childList:true,subtree:true});
 })();
+
+(() => {
+'use strict';
+function start(){
+if(document.getElementById('n59-responsive-v2'))return;
+const style=document.createElement('style');style.id='n59-responsive-v2';style.textContent=`
+#brand-panel .bp-logo{display:none!important}
+@media(max-width:699px){
+#dialog,#n59-panel,#n59-picker,#brand-panel,#n59-favorites{width:calc(100% - 20px);max-width:550px;max-height:calc(var(--n59-visible-height,100dvh) - 24px);box-sizing:border-box;overscroll-behavior:contain;scrollbar-gutter:stable;scroll-padding-bottom:24px}
+#dialog .detail{padding:16px 14px 0}#dialog .detail-top{gap:8px}#dialog .detail-top .micro{min-width:0;overflow-wrap:anywhere}#dialog #close{flex-shrink:0}
+#dialog .purchase{grid-template-columns:minmax(0,auto) minmax(0,1fr)!important;gap:10px;padding:10px 14px max(10px,env(safe-area-inset-bottom,0px))!important;margin-top:18px}
+#dialog #chosen{font-size:18px;line-height:1.4;white-space:normal;overflow-wrap:anywhere}#dialog #n59-detail-cart{min-height:48px;padding:10px;font:500 13px/1.5 var(--sans);white-space:normal;overflow-wrap:anywhere}
+#dialog .volumes button{min-width:0;white-space:normal;overflow-wrap:anywhere;padding:10px 8px}
+#n59-panel .n59-row,#n59-panel #n59-total,#n59-panel #n59-message,#n59-preview{min-width:0;overflow-wrap:anywhere}#n59-panel .n59-row strong{display:block;font:500 15px/1.6 var(--sans)}
+#n59-panel .n59-controls{gap:8px;flex-wrap:wrap}#n59-panel .n59-controls button{min-width:44px;min-height:44px;padding:8px 12px;white-space:normal;overflow-wrap:anywhere}
+#n59-form label{min-width:0}#n59-form input,#n59-form select,#n59-form textarea{max-width:100%;font-size:16px;scroll-margin-block:90px}#n59-form .n59-field-error{overflow-wrap:anywhere}#n59-checkout{min-height:48px;padding:14px 12px;white-space:normal;overflow-wrap:anywhere}
+#n59-panel{padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}#n59-favorites{padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+#n59-picker .qp-option,#n59-picker .qp-nav button,.bp-row,.n59-extra-button{min-width:0;white-space:normal;overflow-wrap:anywhere}.bp-copy{overflow-wrap:anywhere}
+#n59-navigation button,#n59-navigation #n59-cart{overflow-wrap:anywhere}#n59-navigation #n59-cart-count{max-width:100%;white-space:normal;line-height:1.5}
+}
+@media(max-width:389px){.tools{grid-template-columns:minmax(0,1fr);gap:8px}.tools #brand-open{width:100%;font-size:13px;text-align:left}.tools input{width:100%}.tools{padding-top:10px;padding-bottom:10px}}
+@media(max-width:359px){#catalog{grid-template-columns:minmax(0,1fr)}#catalog .cover{aspect-ratio:1/1}#catalog .info{padding:14px}#catalog .name{font-size:21px}#catalog .price{font-size:15px}#dialog .purchase{grid-template-columns:minmax(0,1fr)!important;gap:7px}#dialog #chosen{font-size:18px}#dialog #n59-detail-cart{width:100%}.top{flex-wrap:wrap}.top .micro{max-width:100%}}
+@media(max-height:500px) and (orientation:landscape){#dialog,#n59-panel,#n59-picker,#brand-panel,#n59-favorites{max-height:calc(var(--n59-visible-height,100dvh) - 12px)}#dialog .purchase{position:static}#n59-picker .qp-head{position:static}}
+`;document.head.append(style);
+const panel=document.getElementById('brand-panel');
+if(panel){const removeImages=()=>{for(const logo of panel.querySelectorAll('.bp-logo'))logo.remove();};removeImages();new MutationObserver(removeImages).observe(panel,{childList:true,subtree:true});}
+let frame=0;
+function sync(){cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const viewport=window.visualViewport;const height=Math.min(window.innerHeight,viewport?.height||window.innerHeight);if(height>0)document.documentElement.style.setProperty('--n59-visible-height',Math.floor(height)+'px');const field=document.activeElement;if(window.matchMedia('(max-width:699px)').matches&&field?.matches('input,textarea,select')&&field.closest('dialog[open]')){const rect=field.getBoundingClientRect(),top=viewport?.offsetTop||0;if(rect.bottom>top+height-20||rect.top<top+60)field.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});}});}
+window.addEventListener('resize',sync,{passive:true});window.addEventListener('orientationchange',sync,{passive:true});window.visualViewport?.addEventListener('resize',sync,{passive:true});document.addEventListener('focusin',sync);document.addEventListener('focusout',sync);const tg=window.Telegram?.WebApp;if(typeof tg?.onEvent==='function')tg.onEvent('viewportChanged',sync);sync();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
