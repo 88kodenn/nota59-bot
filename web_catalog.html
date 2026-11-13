@@ -169,4 +169,30 @@ function patchPrices(cards){const items=typeof data!=='undefined'&&Array.isArray
 new MutationObserver(records=>{const cards=[];for(const record of records)for(const node of record.addedNodes){if(!(node instanceof Element))continue;if(node.matches('.card'))cards.push(node);else cards.push(...node.querySelectorAll('.card'));}if(cards.length)patchPrices(cards);}).observe(catalog,{childList:true});
 sync();patchPrices(catalog.querySelectorAll('.card'));
 })();
+
+(() => {
+'use strict';
+if(document.getElementById('n59-editorial-type'))return;
+const href='https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Prata&display=swap';
+let link=document.querySelector('link[rel="stylesheet"][href*="fonts.googleapis.com"]');
+if(link)link.href=href;else{link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.append(link);}
+const style=document.createElement('style');style.id='n59-editorial-type';style.textContent=`
+:root{--serif:'Prata',Georgia,serif;--sans:'Onest',system-ui,Arial,sans-serif}
+body,input,select,textarea,button{font-family:var(--sans)}
+.logo,.hero h1,.section h2,#catalog .name,#dialog .name,#dialog h3,#n59-picker h2,#n59-picker h3,#n59-panel h2,#brand-panel h2,#n59-favorites h2,#n59-favorites h3,#n59-search-empty h3,.tier h4{font-family:var(--serif);font-weight:400;font-synthesis:none}
+#catalog .name{font-size:20px;line-height:1.35;letter-spacing:-.2px}
+#dialog .name{font-size:30px;line-height:1.3;letter-spacing:-.3px}
+#dialog .detail>h3{font-size:25px;line-height:1.35}
+#dialog .copy{font-family:var(--sans);font-size:15px;font-weight:400;line-height:1.8;letter-spacing:0}
+#description .n59-story-section{display:block;margin-top:22px;white-space:pre-wrap}
+#description .n59-story-label{display:block;margin-bottom:6px;font:500 13px/1.6 var(--sans);letter-spacing:.15px;color:var(--gold)}
+.price,#chosen,#n59-total,#n59-cart-count{font-family:var(--sans);font-variant-numeric:tabular-nums}
+@media(max-width:699px){#catalog .name{font-size:18px;line-height:1.35}#dialog .name{font-size:27px}#dialog .detail>h3{font-size:23px}#dialog .copy{font-size:15px;line-height:1.8}.section h2{font-size:25px}#brand-panel h2{font-size:24px}.hero h1{font-size:clamp(28px,7.4vw,36px);line-height:1.25}}
+`;document.head.append(style);
+const description=document.getElementById('description');if(!description)return;
+let rendered=null;
+const titles={'В СТОРОНУ':'Направленность','КОМУ ПОДОЙДЁТ':'Кому подойдёт','КОМУ ПОДОЙДЕТ':'Кому подойдёт','КОГДА НОСИТЬ':'Когда носить','СТОЙКОСТЬ И ШЛЕЙФ':'Стойкость и шлейф'};
+function format(){if(description.innerHTML===rendered)return;const raw=description.textContent;const matches=[...raw.matchAll(/(^|\n)[\t ]*(В СТОРОНУ|КОМУ ПОДОЙДЁТ|КОМУ ПОДОЙДЕТ|КОГДА НОСИТЬ|СТОЙКОСТЬ И ШЛЕЙФ):[\t ]*/gu)];if(!matches.length){rendered=description.innerHTML;return;}const fragment=document.createDocumentFragment();fragment.append(document.createTextNode(raw.slice(0,matches[0].index).trimEnd()));matches.forEach((m,i)=>{const section=document.createElement('span'),label=document.createElement('span');section.className='n59-story-section';label.className='n59-story-label';label.textContent=titles[m[2]];section.append(label,document.createTextNode(raw.slice(m.index+m[0].length,matches[i+1]?.index??raw.length).trim()));fragment.append(section);});description.replaceChildren(fragment);rendered=description.innerHTML;}
+new MutationObserver(format).observe(description,{childList:true});format();
+})();
 </script><!-- n59-brand-logos:end --></body></html>
