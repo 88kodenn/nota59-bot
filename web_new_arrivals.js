@@ -3,17 +3,26 @@
 const section=document.querySelector('.wrap > .section');if(!section||document.getElementById('n59-arrival-tabs'))return;
 const style=document.createElement('style');style.textContent=`
 .wrap>.section{flex-wrap:wrap}
-#n59-arrival-tabs{display:flex;gap:22px;flex-basis:100%;border-bottom:1px solid var(--line);margin-top:8px}
-#n59-arrival-tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:12px 0;min-height:44px;font:500 14px var(--sans)}
+#n59-arrival-tabs{display:flex;flex-wrap:wrap;gap:6px 18px;flex-basis:100%;border-bottom:1px solid var(--line);margin-top:8px}
+#n59-arrival-tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:12px 0;min-height:44px;max-width:100%;font:500 13px/1.5 var(--sans);text-align:left;white-space:normal;overflow-wrap:anywhere}
 #n59-arrival-tabs button[aria-pressed=true]{border-bottom-color:var(--gold);color:var(--gold)}
 .n59-new-badge{position:absolute;right:9px;top:9px;padding:5px 7px;background:#18140fe6;border:1px solid var(--line);border-radius:5px;font:500 10px var(--sans);color:var(--gold)}
 .price.n59-inquire{font-size:12px;white-space:normal;color:var(--muted)}
+.n59-section-hidden{display:none!important}
+.wrap>.section[data-shop-section=gift]>h2,.wrap>.section[data-shop-section=gift]>#status,.wrap>.section[data-shop-section=request]>h2,.wrap>.section[data-shop-section=request]>#status{display:none}
+.n59-shop-section{margin:14px 0 24px;padding:22px 16px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(145deg,#211c15,#14120f)}
+.n59-shop-section[hidden]{display:none}.n59-shop-section h2{margin:0 0 12px;color:var(--gold);font:400 25px/1.4 var(--serif);overflow-wrap:anywhere}.n59-shop-section p{margin:0;color:var(--muted);font:400 14px/1.8 var(--sans)}
 `;document.head.append(style);
-const tabs=document.createElement('div');tabs.id='n59-arrival-tabs';tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Подборка ароматов');
-const all=el('button','Все ароматы'),fresh=el('button','Новинки');for(const b of [all,fresh]){b.type='button';b.setAttribute('aria-controls','catalog');}all.setAttribute('aria-pressed','true');fresh.setAttribute('aria-pressed','false');tabs.append(all,fresh);section.append(tabs);
-let onlyNew=false;
-function switchTo(value){onlyNew=value;all.setAttribute('aria-pressed',String(!value));fresh.setAttribute('aria-pressed',String(value));if(data)window.render();}
-all.onclick=()=>switchTo(false);fresh.onclick=()=>switchTo(true);
+const tabs=document.createElement('div');tabs.id='n59-arrival-tabs';tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Разделы магазина');
+const all=el('button','Все ароматы'),gift=el('button','Подарочные наборы'),request=el('button','Парфюмерия под заказ');
+const giftPanel=el('section',undefined,'n59-shop-section'),requestPanel=el('section',undefined,'n59-shop-section');giftPanel.id='n59-gift-sets';requestPanel.id='n59-special-order';
+const giftTitle=el('h2','Подарочные наборы'),requestTitle=el('h2','Парфюмерия под заказ');giftTitle.id='n59-gift-title';requestTitle.id='n59-request-title';giftPanel.setAttribute('aria-labelledby',giftTitle.id);requestPanel.setAttribute('aria-labelledby',requestTitle.id);
+giftPanel.append(giftTitle,el('p','В этом разделе пока нет опубликованных наборов.'));requestPanel.append(requestTitle,el('p','Список парфюмерии под заказ пока не заполнен.'));giftPanel.hidden=requestPanel.hidden=true;section.after(giftPanel,requestPanel);
+for(const [b,id] of [[all,'catalog'],[gift,giftPanel.id],[request,requestPanel.id]]){b.type='button';b.setAttribute('aria-controls',id);}tabs.append(all,gift,request);section.append(tabs);
+let active='all';
+function applySection(){section.dataset.shopSection=active;const rules=section.classList.contains('n59-rules-hidden');giftPanel.hidden=rules||active!=='gift';requestPanel.hidden=rules||active!=='request';for(const [b,value] of [[all,'all'],[gift,'gift'],[request,'request']])b.setAttribute('aria-pressed',String(active===value));for(const node of [document.querySelector('.tools'),$('catalog'),$('n59-active-brand'),$('n59-fav-launch'),$('n59-recent'),$('n59-search-empty'),$('n59-load-state')])if(node)node.classList.toggle('n59-section-hidden',active!=='all');}
+function switchTo(value){active=value;if(typeof data!=='undefined'&&data)window.render();applySection();}
+all.onclick=()=>switchTo('all');gift.onclick=()=>switchTo('gift');request.onclick=()=>switchTo('request');new MutationObserver(applySection).observe(section,{attributes:true,attributeFilter:['class']});applySection();document.addEventListener('DOMContentLoaded',applySection,{once:true});
 const priced=value=>typeof value==='number'&&Number.isFinite(value)&&value>0;
 const brandSearchAliases={'tom ford':'том форд'};
 window.volume=function(v){
@@ -23,9 +32,9 @@ window.volume=function(v){
  $('order').href='https://t.me/'+encodeURIComponent(data.seller)+'?text='+encodeURIComponent('Здравствуйте! Интересует '+selected.name+', '+v+' мл. '+(hasPrice?'Подскажите наличие и условия заказа.':'Подскажите цену, наличие и условия заказа.'));
 };
 window.render=function(){
- if(!data)return;
+ if(typeof data==='undefined'||!data)return;
  const words=norm($('search').value.trim()).split(/\s+/).filter(Boolean);
- const items=data.items.filter(p=>(!onlyNew||p.isNew===true)&&(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.brand,p.description,p.notes,(window.nota59SearchAliases || {})[p.name] || '',brandSearchAliases[norm(String(p.brand||'').trim())] || ''].join(' ')).includes(w)));
+ const items=data.items.filter(p=>(!$('brand').value||p.brand===$('brand').value)&&words.every(w=>norm([p.name,p.brand,p.description,p.notes,(window.nota59SearchAliases || {})[p.name] || '',brandSearchAliases[norm(String(p.brand||'').trim())] || ''].join(' ')).includes(w)));
  $('catalog').replaceChildren();$('status').textContent=items.length?items.length+' ароматов':'Нет совпадений — измените поиск';
  for(const p of items){
   const card=el('article',undefined,'card'),cover=visual(p),info=el('div',undefined,'info'),bottom=el('div',undefined,'bottom'),button=el('button','↗','more');
@@ -34,6 +43,7 @@ window.render=function(){
   button.type='button';button.setAttribute('aria-label','Открыть аромат '+p.name);button.onclick=()=>openProduct(p);
   bottom.append(price,button);info.append(el('p',p.brand,'brand'),el('h2',p.name.startsWith(p.brand+' ')?p.name.slice(p.brand.length+1):p.name,'name'),bottom);card.append(cover,info);$('catalog').append(card);
  }
+ applySection();
 };
 const extraArt={
 'карамель':'<path d="M13 28l17-13 23 13-1 20-22 9-17-11z" fill="#c58a44"/><path d="M13 28l17 13 23-13M30 41v16"/><path d="M23 28q8-8 17 0" stroke="#ffe0a2"/>',
@@ -54,5 +64,5 @@ window.renderPyramid=function(p){
   svg.innerHTML=markup;item.prepend(svg);
  }
 };
-if(data){$('search').oninput=window.render;$('brand').onchange=window.render;window.render();}
+if(typeof data!=='undefined'&&data){$('search').oninput=window.render;$('brand').onchange=window.render;window.render();}
 })();
