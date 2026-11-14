@@ -1,4 +1,5 @@
-"""Note corrections for mini app only; Costa Azzurra excluded.
+"""Note corrections and image overrides for mini app only.
+Costa Azzurra excluded from note corrections.
 Naxos follows the selected Fragrantica outline, not the manufacturer outline.
 """
 
@@ -12,9 +13,17 @@ NOTE_FIXES = {
     'Xerjoff Naxos': 'Верх: лаванда, бергамот, лимон.\nСердце: мёд, корица, кашмеран, жасмин самбак.\nБаза: лист табака, ваниль, бобы тонка.',
 }
 
+IMAGE_OVERRIDES = {
+    'Jean Paul Gaultier Le Male Le Parfum': 'https://raw.githubusercontent.com/88kodenn/nota59-bot/4d58548fc043a337a35d2a8bf16a6a2d217955bb/Photoroom_20261114_114707.jpeg',
+}
+
 
 def apply_note_fixes(items):
     for item in items:
-        replacement = NOTE_FIXES.get(item.get('name'))
+        name = item.get('name')
+        replacement = NOTE_FIXES.get(name)
         if replacement is not None:
             item['notes'] = replacement
+        image = IMAGE_OVERRIDES.get(name)
+        if image is not None:
+            item['image'] = image
