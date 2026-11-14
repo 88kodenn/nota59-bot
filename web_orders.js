@@ -19,6 +19,13 @@ async function request(url,options={}){
 }
 function mount(){
  const panel=$('n59-panel'),form=$('n59-form');if(!panel||!form||!$('n59-checkout')||$('n59-order-submit'))return;
+ const contact=$('n59-contact');
+ if(contact){
+  const prefill=()=>{if(!contact.value.trim())contact.value='+7';};
+  prefill();
+  contact.addEventListener('focus',()=>{prefill();if(contact.value==='+7')contact.setSelectionRange(2,2);});
+  form.addEventListener('reset',()=>setTimeout(prefill,0));
+ }
  const submit=make('button','Оформить заказ'),history=make('button','Мои заказы'),result=make('div');
  submit.id='n59-order-submit';history.id='n59-order-history';result.id='n59-order-result';submit.type=history.type='button';result.setAttribute('role','status');history.setAttribute('aria-controls',result.id);
  form.before(history,result);form.append(submit);const show=text=>{result.textContent=text;};
