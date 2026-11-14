@@ -18,6 +18,19 @@ style.textContent=`
 #n59-navigation button[aria-current=page]{color:var(--gold)}
 #n59-navigation button[aria-current=page]::before{content:'';position:absolute;top:0;width:38px;height:2px;background:var(--gold)}
 #n59-navigation svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#n59-navigation button::after{content:'';position:absolute;inset:3px 6px 8px;border-radius:12px;background:radial-gradient(ellipse at 50% 28%,#dfbb7824,transparent 72%);opacity:0;pointer-events:none}
+#n59-navigation button[aria-current=page]::after{opacity:.6}
+#n59-navigation button:active::after{opacity:1}
+#n59-navigation button:focus-visible{outline:2px solid var(--gold);outline-offset:-5px;border-radius:10px}
+@media(prefers-reduced-motion:no-preference){
+#n59-navigation button{transition:color .25s ease,transform .15s ease}
+#n59-navigation button:active{transform:scale(.96)}
+#n59-navigation button::after{transition:opacity .3s ease}
+#n59-navigation button[aria-current=page]::before{animation:n59-nav-line .3s ease-out}
+#n59-navigation button[aria-current=page] svg{filter:drop-shadow(0 0 5px #dfbb7845)}
+@keyframes n59-nav-line{from{opacity:0;transform:scaleX(.3)}to{opacity:1;transform:scaleX(1)}}
+}
+@media(hover:hover) and (pointer:fine){#n59-navigation button:hover::after{opacity:.8}}
 `;
 document.head.append(style);
 const section=document.createElement('section');section.id='n59-rules';section.hidden=true;section.setAttribute('aria-labelledby','n59-rules-title');
@@ -42,6 +55,9 @@ const catalogButton=button('Каталог','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3
 const rulesButton=button('Правила','M6 2h8l4 4v16H6zM14 2v5h4M9 11h6M9 15h6M9 18h4');
 catalogButton.setAttribute('aria-current','page');catalogButton.setAttribute('aria-controls','catalog');rulesButton.setAttribute('aria-controls',section.id);
 nav.append(catalogButton,rulesButton);document.body.append(nav);
+const navAnimations=new WeakMap(),motion=window.matchMedia('(prefers-reduced-motion: reduce)');
+nav.addEventListener('click',e=>{const target=e.target instanceof Element?e.target.closest('button'):null;if(!target||target.disabled||motion.matches)return;const icon=target.querySelector('svg');if(!icon?.animate)return;navAnimations.get(icon)?.cancel();const animation=icon.animate([{transform:'translateY(0) scale(1)'},{transform:'translateY(-4px) scale(1.1)',offset:.4},{transform:'translateY(1px) scale(.98)',offset:.75},{transform:'translateY(0) scale(1)'}],{duration:420,easing:'cubic-bezier(.22,.7,.3,1)'});navAnimations.set(icon,animation);},true);
+motion.addEventListener?.('change',()=>{if(motion.matches)for(const icon of nav.querySelectorAll('svg'))navAnimations.get(icon)?.cancel();});
 let current='catalog',catalogScroll=0;
 function showRules(){if(current==='rules')return;catalogScroll=window.scrollY;current='rules';for(const node of catalogNodes)node.classList.add('n59-rules-hidden');section.hidden=false;catalogButton.removeAttribute('aria-current');rulesButton.setAttribute('aria-current','page');window.scrollTo(0,0);heading.focus({preventScroll:true});}
 function showCatalog(){if(current==='catalog')return;current='catalog';section.hidden=true;for(const node of catalogNodes)node.classList.remove('n59-rules-hidden');rulesButton.removeAttribute('aria-current');catalogButton.setAttribute('aria-current','page');window.scrollTo(0,catalogScroll);catalogButton.focus({preventScroll:true});}
