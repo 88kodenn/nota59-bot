@@ -1,8 +1,30 @@
 (() => {
 'use strict';
 const s=document.getElementById('brand');if(!s||document.getElementById('brand-open'))return;
-const logos=window.n59BrandLogos||{};
+// Text styling inspired by brand typography, not official logos or proprietary fonts.
+const serif='Georgia, "Times New Roman", serif',sans='Arial, Helvetica, sans-serif';
+const profiles={
+'Amouage':['AMOUAGE',sans,22,400,'.18em'],
+'Clive Christian':['CLIVE CHRISTIAN',serif,20,400,'.055em'],
+'Creed':['CREED',serif,27,400,'.10em'],
+'Dior':['Dior',serif,30,400,'0'],
+'Emporio Armani':['EMPORIO ARMANI',serif,20,400,'.06em'],
+'Essential Parfums':['ESSENTIAL PARFUMS',sans,18,400,'.08em'],
+'Ex Nihilo':['EX NIHILO',sans,22,400,'.18em'],
+'Initio':['INITIO',sans,25,400,'.16em'],
+'Jean Paul Gaultier':['JEAN PAUL GAULTIER',sans,19,600,'.025em'],
+'Kilian':['KILIAN',serif,25,400,'.10em'],
+'Louis Vuitton':['LOUIS VUITTON',sans,20,500,'.05em'],
+'Maison Crivelli':['MAISON CRIVELLI',serif,19,400,'.07em'],
+'Maison Margiela':['Maison Margiela',serif,22,400,'.015em'],
+'Mancera':['MANCERA',serif,23,400,'.13em'],
+'Parfums de Marly':['PARFUMS DE MARLY',serif,18,400,'.05em'],
+'Tom Ford':['TOM FORD',sans,25,700,'.025em'],
+'Viktor & Rolf':['VIKTOR&ROLF',serif,23,400,'.04em'],
+'Xerjoff':['Xerjoff',serif,28,400,'.015em']
+};
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
+function brandName(brand,text){const n=el('span',text,'bp-name'),p=profiles[brand];if(p){n.textContent=p[0];for(const [key,value] of Object.entries({'--bp-family':p[1],'--bp-size':p[2]+'px','--bp-weight':p[3],'--bp-spacing':p[4]}))n.style.setProperty(key,String(value));}return n;}
 const style=el('style');style.textContent=`
 #brand-open{min-width:0;width:100%;min-height:48px;padding:10px;background:#191610;color:var(--gold);border:1px solid var(--line);border-radius:9px;font:12px var(--sans);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
 #brand-panel{width:calc(100% - 24px);max-width:480px;max-height:85dvh;background:linear-gradient(140deg,#241e15,#100f0c);border:1px solid #b7935266;border-radius:20px;overflow:hidden;color:var(--text)}
@@ -11,19 +33,17 @@ const style=el('style');style.textContent=`
 #brand-panel h2{font:600 28px var(--serif);color:var(--gold);margin:0}
 .bp-search{display:block;width:calc(100% - 36px);margin:0 18px 14px;padding:13px;border:1px solid var(--line);background:#100e0b;color:var(--text);border-radius:10px;font:16px var(--sans)}
 .bp-list{overflow-y:auto;max-height:48dvh;overscroll-behavior:contain;padding:0 12px 18px}
-.bp-row{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;padding:10px 8px;border:0;border-bottom:1px solid var(--line);border-radius:8px;background:transparent;color:var(--text);text-align:left;font:14px var(--sans)}
+.bp-row{display:flex;align-items:center;gap:12px;width:100%;min-height:78px;padding:14px 10px;border:0;border-bottom:1px solid var(--line);border-radius:8px;background:transparent;color:var(--text);text-align:left;font:14px var(--sans)}
 .bp-row[aria-pressed=true]{background:#d5b37518;box-shadow:inset 0 0 0 1px #d5b37566}
-.bp-logo{width:68px;height:44px;flex-shrink:0;display:grid;place-items:center;border:1px solid #d1bf9c55;background:#f5f0e6;border-radius:7px;padding:5px;overflow:hidden}
-.bp-logo img{width:100%;height:100%;object-fit:contain;display:block}.bp-logo:has(.bp-white){background:#17140f}
-.bp-logo img.bp-white{filter:none}.bp-copy{flex:1;min-width:0}.bp-copy small{display:block;color:var(--muted);font:11px var(--sans);margin-top:5px}
+.bp-copy{flex:1;min-width:0}#brand-panel .bp-name{display:block;max-width:100%;font-family:var(--bp-family,var(--sans));font-size:var(--bp-size,20px);font-weight:var(--bp-weight,400);line-height:1.35;letter-spacing:var(--bp-spacing,0);text-transform:none;white-space:normal;overflow-wrap:anywhere}#brand-panel .bp-copy small{display:block;color:var(--muted);font:11px/1.5 var(--sans);letter-spacing:0;text-transform:none;margin-top:7px}
 .bp-empty{padding:16px;color:var(--muted)}
+@media(max-width:359px){#brand-panel .bp-name{font-size:min(var(--bp-size,20px),6vw)}}
 @media(prefers-reduced-motion:reduce){#brand-panel[open]{animation:none}}
 `;document.head.append(style);
-function image(brand){const a=logos[brand];if(!a)return null;const box=el('span',undefined,'bp-logo'),img=el('img');img.src=a.data;img.alt='';img.loading='lazy';img.onerror=()=>box.remove();if(a.white)img.className='bp-white';box.append(img);return box;}
 const trigger=el('button','Все бренды ⌄');trigger.id='brand-open';trigger.type='button';trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-controls','brand-panel');trigger.setAttribute('aria-expanded','false');s.after(trigger);s.hidden=true;
 const panel=el('dialog');panel.id='brand-panel';panel.setAttribute('aria-labelledby','bp-heading');const head=el('div',undefined,'bp-head'),title=el('h2','Парфюмерные дома'),close=el('button','×','close');title.id='bp-heading';close.type='button';close.setAttribute('aria-label','Закрыть выбор бренда');head.append(title,close);
 const search=el('input',undefined,'bp-search');search.type='search';search.placeholder='Найти бренд';search.setAttribute('aria-label','Поиск бренда');const list=el('div',undefined,'bp-list');panel.append(head,search,list);document.body.append(panel);
-function draw(){trigger.textContent=(s.selectedOptions[0]?.textContent||'Все бренды')+' ⌄';list.replaceChildren();const q=search.value.trim().toLowerCase();let found=0;for(const o of s.options){if(o.value&&!o.textContent.toLowerCase().includes(q))continue;found++;const row=el('button',undefined,'bp-row');row.type='button';row.setAttribute('aria-pressed',String(o.value===s.value));const logo=image(o.value);if(logo)row.append(logo);const copy=el('span',o.textContent,'bp-copy');if(typeof data!=='undefined'&&data?.items)copy.append(el('small','Ароматов: '+data.items.filter(p=>!o.value||p.brand===o.value).length));row.append(copy);if(o.value===s.value){const tick=el('span','✓');tick.setAttribute('aria-hidden','true');row.append(tick);}row.onclick=()=>{s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));panel.close();draw();};list.append(row);}if(!found)list.append(el('p','Бренд не найден','bp-empty'));}
+function draw(){trigger.textContent=(s.selectedOptions[0]?.textContent||'Все бренды')+' ⌄';list.replaceChildren();const q=search.value.trim().toLowerCase();let found=0;for(const o of s.options){if(o.value&&!o.textContent.toLowerCase().includes(q))continue;found++;const row=el('button',undefined,'bp-row');row.type='button';row.setAttribute('aria-pressed',String(o.value===s.value));const copy=el('span',undefined,'bp-copy');copy.append(brandName(o.value,o.textContent));if(typeof data!=='undefined'&&data?.items)copy.append(el('small','Ароматов: '+data.items.filter(p=>!o.value||p.brand===o.value).length));row.append(copy);if(o.value===s.value){const tick=el('span','✓');tick.setAttribute('aria-hidden','true');row.append(tick);}row.onclick=()=>{s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));panel.close();draw();};list.append(row);}if(!found)list.append(el('p','Бренд не найден','bp-empty'));}
 trigger.onclick=()=>{search.value='';draw();panel.showModal();trigger.setAttribute('aria-expanded','true');close.focus();};close.onclick=()=>panel.close();panel.addEventListener('close',()=>{trigger.setAttribute('aria-expanded','false');trigger.focus();});search.oninput=draw;s.addEventListener('change',draw);new MutationObserver(draw).observe(s,{childList:true,subtree:true});draw();
 })();
 
