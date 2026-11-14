@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from urllib.parse import urlsplit
 import app
+import banner_delivery
 
 BASE = Path(__file__).resolve().parent
 SOURCES = {
@@ -61,5 +62,6 @@ def install():
     app.ThreadingHTTPServer = server
 
 if __name__ == '__main__':
+    banner_delivery.install(app, BASE)
     install()
     app.main()
