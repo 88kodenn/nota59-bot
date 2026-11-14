@@ -43,3 +43,31 @@ function validate(force=false){let first=null;for(const field of fields){const t
 form.addEventListener('input',()=>validate());form.addEventListener('change',()=>validate());form.addEventListener('focusout',e=>{if(errors.has(e.target)){touched.add(e.target);validate();}});form.addEventListener('invalid',e=>{if(errors.has(e.target)){touched.add(e.target);validate();}},true);
 checkout.addEventListener('click',e=>{if(checkout.getAttribute('aria-disabled')==='true')return;const first=validate(true);if(first){e.preventDefault();e.stopImmediatePropagation();first.focus({preventScroll:true});first.scrollIntoView({block:'center',behavior:'instant'});}},true);
 })();
+
+(() => {
+'use strict';
+const catalog=document.getElementById('catalog');if(!catalog||document.getElementById('n59-photo-view'))return;
+const style=document.createElement('style');style.textContent=`
+#catalog .cover>img{cursor:zoom-in}#catalog .cover>img:focus-visible{outline:2px solid var(--gold);outline-offset:-4px}
+#n59-photo-view{position:fixed;inset:0;margin:0;padding:0;width:100%;max-width:none;height:100dvh;max-height:none;border:0;border-radius:0;background:transparent;overflow:hidden;animation:none!important;transform:none!important}
+#n59-photo-view::backdrop{background:rgba(0,0,0,.9);backdrop-filter:blur(5px)}
+#n59-photo-view img{position:absolute;display:block;max-width:none;max-height:none;object-fit:contain;transform-origin:center;pointer-events:none;border-radius:8px}
+#n59-photo-close{position:absolute;z-index:2;top:max(12px,env(safe-area-inset-top));right:14px;width:48px;height:48px;border:1px solid var(--gold);border-radius:50%;background:#14120fe6;color:var(--gold);font-size:28px}
+`;document.head.append(style);
+const panel=document.createElement('dialog');panel.id='n59-photo-view';panel.setAttribute('aria-label','Увеличенная фотография аромата');
+const photo=document.createElement('img'),close=document.createElement('button');close.id='n59-photo-close';close.type='button';close.textContent='×';close.setAttribute('aria-label','Закрыть фотографию');panel.append(photo,close);document.body.append(panel);
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+let source=null,previous=null,overflow='',closing=false,animation=null;
+function fit(){const w=Math.max(1,panel.clientWidth-24),h=Math.max(1,panel.clientHeight-124),ratio=photo.naturalWidth/photo.naturalHeight||1,width=Math.min(w,h*ratio),height=width/ratio;Object.assign(photo.style,{width:width+'px',height:height+'px',left:(panel.clientWidth-width)/2+'px',top:64+(h-height)/2+'px'});}
+function origin(){const a=source?.isConnected?source.getBoundingClientRect():null,b=photo.getBoundingClientRect();if(!a||!b.width||a.bottom<0||a.top>innerHeight)return 'scale(.9)';const scale=Math.min(a.width/b.width,a.height/b.height);return 'translate('+(a.left+a.width/2-b.left-b.width/2)+'px,'+(a.top+a.height/2-b.top-b.height/2)+'px) scale('+scale+')';}
+function animate(frames,duration){if(reduced()||!photo.animate)return Promise.resolve();animation?.cancel();animation=photo.animate(frames,{duration,easing:'cubic-bezier(.22,.8,.25,1)'});return animation.finished.catch(()=>{});}
+async function open(img){if(panel.open||!img.complete||!img.naturalWidth)return;source=img;previous=document.activeElement;photo.src=img.currentSrc||img.src;photo.alt=img.alt;overflow=document.body.style.overflow;document.body.style.overflow='hidden';closing=false;panel.showModal();fit();close.focus({preventScroll:true});await animate([{transform:origin(),opacity:.5},{transform:'none',opacity:1}],300);}
+async function dismiss(){if(!panel.open||closing)return;closing=true;animation?.cancel();await animate([{transform:'none',opacity:1},{transform:origin(),opacity:0}],250);if(panel.open)panel.close();}
+close.addEventListener('click',dismiss);panel.addEventListener('click',e=>{if(e.target===panel)dismiss();});panel.addEventListener('cancel',e=>{e.preventDefault();dismiss();});
+panel.addEventListener('close',()=>{animation?.cancel();document.body.style.overflow=overflow;closing=false;if(previous?.isConnected)previous.focus({preventScroll:true});source=null;});
+photo.addEventListener('load',()=>{if(panel.open)fit();});window.addEventListener('resize',()=>{if(panel.open){animation?.cancel();fit();}});
+function decorate(){for(const img of catalog.querySelectorAll('.cover>img')){if(img.getAttribute('role')==='button')continue;img.tabIndex=0;img.setAttribute('role','button');img.setAttribute('aria-haspopup','dialog');img.setAttribute('aria-controls',panel.id);img.setAttribute('aria-label','Увеличить фото: '+img.alt);}}
+new MutationObserver(decorate).observe(catalog,{childList:true,subtree:true});decorate();
+catalog.addEventListener('click',e=>{const img=e.target instanceof Element?e.target.closest('.cover>img'):null;if(!img)return;e.preventDefault();e.stopImmediatePropagation();open(img);},true);
+catalog.addEventListener('keydown',e=>{if(!['Enter',' '].includes(e.key)||!(e.target instanceof Element)||!e.target.matches('.cover>img'))return;e.preventDefault();e.stopImmediatePropagation();open(e.target);},true);
+})();
