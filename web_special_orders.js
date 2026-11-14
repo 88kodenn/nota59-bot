@@ -37,3 +37,31 @@ function mount(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 })();
+
+// Standalone order history on the home screen; checkout result stays in the cart.
+(() => {
+'use strict';
+function mount(){
+ const top=document.querySelector('.wrap > .top');if(!top||document.getElementById('n59-home-orders'))return;
+ const make=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
+ const launch=make('div'),open=make('button','Мои заказы');launch.id='n59-home-orders';open.type='button';open.setAttribute('aria-haspopup','dialog');open.setAttribute('aria-controls','n59-history-dialog');launch.append(open);top.after(launch);
+ const dialog=make('dialog');dialog.id='n59-history-dialog';dialog.setAttribute('aria-labelledby','n59-history-title');
+ const head=make('div'),title=make('h2','Мои заказы'),close=make('button','×'),refresh=make('button','Обновить'),content=make('div');head.className='n59-history-head';title.id='n59-history-title';close.type=refresh.type='button';close.className='close';close.setAttribute('aria-label','Закрыть историю заказов');content.id='n59-history-content';content.setAttribute('role','status');content.setAttribute('aria-live','polite');head.append(title,close);dialog.append(head,refresh,content);document.body.append(dialog);
+ const style=make('style');style.textContent=`#n59-order-history{display:none!important}#n59-home-orders{display:flex;justify-content:flex-end;margin:12px 0}#n59-home-orders button,#n59-history-dialog>button{min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:#211b13;color:var(--gold);font:500 13px/1.5 var(--sans)}#n59-history-dialog{box-sizing:border-box;padding:0 16px 20px;width:calc(100% - 20px);max-width:550px;max-height:calc(100dvh - 24px);overscroll-behavior:contain}#n59-history-dialog .n59-history-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 -16px 14px;padding:14px 16px;background:#14120f;border-bottom:1px solid var(--line)}#n59-history-dialog h2{margin:0;font:400 30px/1.3 var(--serif);color:var(--gold)}#n59-history-content{margin-top:14px}#n59-history-content article{padding:16px 0;border-bottom:1px solid var(--line)}#n59-history-content h3{margin:0 0 8px;padding:0;border:0;font:500 16px/1.5 var(--sans);color:var(--gold)}#n59-history-content p{margin:6px 0;color:var(--muted);font:400 14px/1.7 var(--sans);overflow-wrap:anywhere}`;document.head.append(style);
+ let controller=null,generation=0;
+ const money=n=>new Intl.NumberFormat('ru-RU').format(n)+' ₽';
+ async function load(){
+  controller?.abort();controller=new AbortController();const token=++generation;refresh.disabled=true;content.setAttribute('aria-busy','true');content.replaceChildren(make('p','Загружаем заказы…'));
+  try{
+   const init=window.Telegram?.WebApp?.initData||'';if(!init)throw new Error('Откройте Mini App заново через Telegram.');
+   const response=await fetch('/api/orders?init='+encodeURIComponent(init),{cache:'no-store',signal:controller.signal});const answer=await response.json();if(!response.ok||!answer.ok||!Array.isArray(answer.orders))throw new Error(answer.error||'Не удалось загрузить историю. Нажмите «Обновить».');if(token!==generation||!dialog.open)return;
+   content.replaceChildren();if(!answer.orders.length)content.append(make('p','Заказов и заявок пока нет.'));
+   for(const order of answer.orders){const card=make('article'),special=order.order_type==='special';card.append(make('h3',(special?'Заявка №':'Заказ №')+order.order_number),make('p',special?'Парфюмерия под заказ':'Ароматы из каталога'));for(const item of order.items||[])card.append(make('p',item.name+' · '+item.volume+' мл × '+item.qty));card.append(make('p',special||typeof order.total!=='number'?'Цена уточняется':'Итого за товары: '+money(order.total)),make('p','Статус: '+order.status_label));content.append(card);}
+  }catch(error){if(error.name!=='AbortError'&&token===generation)content.replaceChildren(make('p',error.message));}
+  finally{if(token===generation){refresh.disabled=false;content.removeAttribute('aria-busy');}}
+ }
+ open.addEventListener('click',()=>{if(!dialog.open)dialog.showModal();close.focus({preventScroll:true});load();});close.addEventListener('click',()=>dialog.close());refresh.addEventListener('click',load);
+ dialog.addEventListener('close',()=>{generation++;controller?.abort();refresh.disabled=false;content.removeAttribute('aria-busy');open.focus({preventScroll:true});});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
