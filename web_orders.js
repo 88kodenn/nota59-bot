@@ -76,25 +76,26 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 function start(){
 if(document.getElementById('n59-hero-polish'))return;
 const style=document.createElement('style');style.id='n59-hero-polish';style.textContent=`
-.wrap .hero{position:relative;isolation:isolate;display:block!important;padding:0!important;overflow:hidden;background:#14120f!important;border-radius:16px}
+.wrap .hero{position:relative;isolation:isolate;display:block!important;padding:0!important;overflow:hidden;background:#100e0a!important;border-radius:16px}
 .wrap .hero.n59-rules-hidden{display:none!important}
 .wrap .hero::before,.wrap .hero .bottle{display:none!important}
-.wrap .hero .n59-hero-art{position:relative;display:grid;grid-template-columns:minmax(0,1fr);isolation:isolate;min-width:0;aspect-ratio:3/2;background:#14120f}
-.wrap .hero .n59-hero-photo{position:static;grid-area:1/1;z-index:0;display:block;width:100%;max-width:100%;height:auto!important;align-self:start;object-fit:contain;object-position:center}
-.wrap .hero .n59-hero-art::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(8,9,7,.48),transparent 62%)}
-.wrap .hero .n59-hero-art h1{grid-area:1/1;position:relative;z-index:2;align-self:start;justify-self:start;box-sizing:border-box;width:48%;max-width:460px;min-height:0!important;margin:32px 0 24px 28px;padding:0!important;font:400 clamp(28px,4vw,48px)/1.1 var(--serif);letter-spacing:-.4px;color:var(--text);overflow-wrap:normal;text-shadow:0 2px 12px #0008}
-.wrap .hero h1 em{font-style:normal;color:var(--gold)}
-.wrap .hero .hero-copy{position:static;display:block!important;box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:0;padding:22px 28px 24px}
+.wrap .hero .n59-hero-art{position:relative;isolation:isolate;overflow:hidden;min-width:0;background:#100e0a}
+.wrap .hero .n59-hero-art::before{content:'';position:absolute;inset:0;z-index:-2;background:linear-gradient(#100e0a70,#100e0ab8),url('/assets/nota59-banner.jpg?v=cd5b4d08') center bottom/cover;filter:blur(12px);transform:scale(1.08);pointer-events:none}
+.wrap .hero .n59-hero-photo{position:absolute;top:0;left:0;z-index:-1;display:block;width:100%;max-width:100%;height:auto!important;object-fit:contain;object-position:top center;-webkit-mask-image:linear-gradient(#000 65%,transparent 100%);mask-image:linear-gradient(#000 65%,transparent 100%)}
+.wrap .hero .n59-hero-art::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(90deg,#08090755,transparent 57%),linear-gradient(0deg,#08090780,transparent 55%)}
+.wrap .hero .hero-copy{position:relative;z-index:1;display:flex!important;flex-direction:column;align-items:flex-start;box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:500px;padding:32px;background:transparent}
 .wrap .hero .hero-copy .eyebrow{display:none!important}
-.wrap .hero .hero-copy>p{display:block!important;max-width:100%!important;margin:0;color:var(--muted);font:400 14px/1.7 var(--sans)}
-.wrap .hero #n59-picker-open{box-sizing:border-box;width:100%;max-width:100%!important;min-height:48px;margin:16px 0 0!important;padding:13px 20px;border:1px solid #dfbb78;border-radius:8px;background:linear-gradient(110deg,#b58a46,#e1bf7c);color:#17130d;font:600 14px/1.4 var(--sans);white-space:normal;text-shadow:none}
-.wrap .hero .n59-picker-skip{display:block!important;max-width:100%!important;margin-top:10px!important;color:var(--muted);font:400 12px/1.6 var(--sans)}
+.wrap .hero .hero-copy h1{box-sizing:border-box;width:48%;max-width:460px;min-height:0!important;margin:0 0 24px;padding:0!important;font:400 clamp(28px,4vw,48px)/1.1 var(--serif);letter-spacing:-.4px;color:var(--text);overflow-wrap:normal;text-shadow:0 2px 12px #0008}
+.wrap .hero h1 em{font-style:normal;color:var(--gold)}
+.wrap .hero .hero-copy>p{display:block!important;max-width:100%!important;width:100%;margin:auto 0 0;color:#ded2c0;font:400 14px/1.65 var(--sans);text-shadow:0 1px 8px #000}
+.wrap .hero #n59-picker-open{box-sizing:border-box;width:100%;max-width:100%!important;min-height:48px;margin:14px 0 0!important;padding:13px 20px;border:1px solid #dfbb78;border-radius:8px;background:linear-gradient(110deg,#b58a46,#e1bf7c);color:#17130d;font:600 14px/1.4 var(--sans);white-space:normal;text-shadow:none}
+.wrap .hero .n59-picker-skip{display:block!important;max-width:100%!important;width:100%;margin:10px 0 0!important;color:#c9bba7;font:400 12px/1.6 var(--sans);text-shadow:0 1px 8px #000}
 .wrap .hero #n59-picker-open:focus-visible{outline:2px solid #f3eade;outline-offset:4px}
-@media(max-width:699px){.wrap .hero .n59-hero-art h1{width:49%;max-width:none;margin:22px 0 16px 20px;font-size:clamp(20px,5.5vw,28px);line-height:1.12}.wrap .hero .hero-copy{padding:18px 20px 20px}.wrap .hero .hero-copy>p{font-size:13px}.wrap .hero #n59-picker-open{font-size:13px}}
-@media(max-width:359px){.wrap .hero .n59-hero-art h1{margin:16px 0 12px 16px;font-size:19px}.wrap .hero .hero-copy{padding:16px}}
+@media(max-width:699px){.wrap .hero .hero-copy{min-height:430px;padding:22px 20px}.wrap .hero .hero-copy h1{width:49%;max-width:none;margin-bottom:clamp(56px,18vw,105px);font-size:clamp(20px,5.5vw,28px);line-height:1.12}.wrap .hero .hero-copy>p{font-size:13px}.wrap .hero #n59-picker-open{font-size:13px}}
+@media(max-width:359px){.wrap .hero .hero-copy{min-height:410px;padding:18px 16px}.wrap .hero .hero-copy h1{font-size:19px;margin-bottom:56px}.wrap .hero .n59-picker-skip{font-size:11px}}
 `;document.head.append(style);
-const hero=document.querySelector('.hero'),photo=hero?.querySelector('.n59-hero-photo'),heading=hero?.querySelector('h1');
-if(hero&&photo&&heading&&!hero.querySelector('.n59-hero-art')){const art=document.createElement('div');art.className='n59-hero-art';hero.prepend(art);art.append(photo,heading);}
+const hero=document.querySelector('.hero'),photo=hero?.querySelector('.n59-hero-photo'),heading=hero?.querySelector('h1'),copy=hero?.querySelector('.hero-copy');
+if(hero&&photo&&heading&&copy&&!hero.querySelector('.n59-hero-art')){const art=document.createElement('div');art.className='n59-hero-art';hero.prepend(art);art.append(photo,copy);}
 let watched=null;
 const resize='ResizeObserver' in window?new ResizeObserver(()=>sync()):null;
 function sync(){
