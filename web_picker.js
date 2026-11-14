@@ -99,14 +99,16 @@ dialog.addEventListener('close',stop);document.addEventListener('visibilitychang
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 
-// Haptics are independent of sound and never change the selected volume.
+// One shared handler: independent of sound, no duplicate volume haptics.
 (() => {
 'use strict';
-if(window.n59VolumeHaptics)return;window.n59VolumeHaptics=true;
+if(window.n59ButtonHaptics)return;window.n59ButtonHaptics=true;
 let last=-Infinity;
+const selector='button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],a.order,summary';
 document.addEventListener('click',e=>{
-const button=e.target instanceof Element?e.target.closest('#dialog #v5,#dialog #v10'):null;
-if(!button||button.disabled||!e.isTrusted||document.hidden||!document.getElementById('dialog')?.open)return;
+if(!e.isTrusted||document.hidden)return;
+const button=e.target instanceof Element?e.target.closest(selector):null;
+if(!button||button.matches(':disabled')||button.closest('[inert],[aria-disabled="true"]'))return;
 const now=performance.now();if(now-last<80)return;
 try{const app=window.Telegram?.WebApp;if(!app||typeof app.isVersionAtLeast!=='function'||!app.isVersionAtLeast('6.1')||typeof app.HapticFeedback?.impactOccurred!=='function')return;last=now;app.HapticFeedback.impactOccurred('light');}catch(e){}
 },true);
