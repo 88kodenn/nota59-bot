@@ -12,12 +12,17 @@ const style=document.createElement('style');style.textContent=`
 .wrap>.section[data-shop-section=gift]>h2,.wrap>.section[data-shop-section=gift]>#status,.wrap>.section[data-shop-section=request]>h2,.wrap>.section[data-shop-section=request]>#status{display:none}
 .n59-shop-section{margin:14px 0 24px;padding:22px 16px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(145deg,#211c15,#14120f)}
 .n59-shop-section[hidden]{display:none}.n59-shop-section h2{margin:0 0 12px;color:var(--gold);font:400 25px/1.4 var(--serif);overflow-wrap:anywhere}.n59-shop-section p{margin:0;color:var(--muted);font:400 14px/1.8 var(--sans)}
+#n59-special-order ul{margin:18px 0 0;padding-left:20px;color:var(--muted);font:400 14px/1.8 var(--sans)}#n59-special-order li{padding-left:3px;overflow-wrap:anywhere}#n59-special-order li+li{margin-top:8px}
 `;document.head.append(style);
 const tabs=document.createElement('div');tabs.id='n59-arrival-tabs';tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Разделы магазина');
 const all=el('button','Все ароматы'),gift=el('button','Подарочные наборы'),request=el('button','Парфюмерия под заказ');
 const giftPanel=el('section',undefined,'n59-shop-section'),requestPanel=el('section',undefined,'n59-shop-section');giftPanel.id='n59-gift-sets';requestPanel.id='n59-special-order';
 const giftTitle=el('h2','Подарочные наборы'),requestTitle=el('h2','Парфюмерия под заказ');giftTitle.id='n59-gift-title';requestTitle.id='n59-request-title';giftPanel.setAttribute('aria-labelledby',giftTitle.id);requestPanel.setAttribute('aria-labelledby',requestTitle.id);
-giftPanel.append(giftTitle,el('p','В этом разделе пока нет опубликованных наборов.'));requestPanel.append(requestTitle,el('p','Список парфюмерии под заказ пока не заполнен.'));giftPanel.hidden=requestPanel.hidden=true;section.after(giftPanel,requestPanel);
+giftPanel.append(giftTitle,el('p','В этом разделе пока нет опубликованных наборов.'));
+const requestTerms=el('ul');
+for(const text of ['Предоплата — 100%.','Срок поставки — от 2 до 4 недель.','Минимальный заказ — 5 000 рублей.'])requestTerms.append(el('li',text));
+requestPanel.append(requestTitle,el('p','Привезу оригинальную парфюмерию дешевле онлайн- и офлайн-магазинов. Никакой пали, реплик и арабских клонов.'),requestTerms);
+giftPanel.hidden=requestPanel.hidden=true;section.after(giftPanel,requestPanel);
 for(const [b,id] of [[all,'catalog'],[gift,giftPanel.id],[request,requestPanel.id]]){b.type='button';b.setAttribute('aria-controls',id);}tabs.append(all,gift,request);section.append(tabs);
 let active='all';
 function applySection(){section.dataset.shopSection=active;const rules=section.classList.contains('n59-rules-hidden');giftPanel.hidden=rules||active!=='gift';requestPanel.hidden=rules||active!=='request';for(const [b,value] of [[all,'all'],[gift,'gift'],[request,'request']])b.setAttribute('aria-pressed',String(active===value));for(const node of [document.querySelector('.tools'),$('catalog'),$('n59-active-brand'),$('n59-fav-launch'),$('n59-recent'),$('n59-search-empty'),$('n59-load-state')])if(node)node.classList.toggle('n59-section-hidden',active!=='all');}
