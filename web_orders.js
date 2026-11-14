@@ -69,3 +69,27 @@ function mount(){
 new MutationObserver(mount).observe(document.documentElement,{childList:true,subtree:true});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});mount();
 })();
+
+// Catalog visual polish, isolated from order submission.
+(() => {
+'use strict';
+function start(){
+if(document.getElementById('n59-hero-polish'))return;
+const style=document.createElement('style');style.id='n59-hero-polish';style.textContent=`
+.hero .bottle{width:140px;height:238px;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;transform:none!important;pointer-events:none;filter:drop-shadow(0 18px 18px #0009)}
+.hero .bottle::before,.hero .bottle::after{display:none!important}.hero .bottle>svg{display:block;width:100%;height:100%;overflow:visible}
+@media(min-width:700px){.hero .bottle{right:48px;top:64px;bottom:auto}}
+@media(min-width:360px) and (max-width:699px){.hero .bottle{right:16px;top:60px;bottom:auto;width:72px;height:146px}.hero h1{box-sizing:border-box;padding-right:78px}}
+@media(max-width:359px){.hero .bottle{display:none}}
+`;document.head.append(style);
+let watched=null;
+const resize='ResizeObserver' in window?new ResizeObserver(()=>sync()):null;
+function sync(){
+const brand=document.getElementById('brand-open'),fav=document.querySelector('#n59-fav-launch button');
+if(brand&&fav){const box=brand.getBoundingClientRect();if(box.width&&box.height){const css=getComputedStyle(brand);for(const prop of ['font','letter-spacing','color','background-color','border','border-radius','padding','box-shadow'])fav.style.setProperty(prop,css.getPropertyValue(prop));Object.assign(fav.style,{boxSizing:'border-box',width:box.width+'px',height:box.height+'px',minHeight:box.height+'px',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'});}if(watched!==brand){resize?.disconnect();resize?.observe(brand);watched=brand;}}
+const bottle=document.querySelector('.hero .bottle');if(bottle&&!bottle.dataset.n59Faceted){bottle.dataset.n59Faceted='1';bottle.setAttribute('aria-hidden','true');bottle.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 238" fill="none"><defs><linearGradient id="n59-glass" x1="18" y1="70" x2="123" y2="211" gradientUnits="userSpaceOnUse"><stop stop-color="#41433c"/><stop offset=".25" stop-color="#121713"/><stop offset=".7" stop-color="#050706"/><stop offset="1" stop-color="#383126"/></linearGradient><linearGradient id="n59-metal"><stop stop-color="#77552b"/><stop offset=".45" stop-color="#f2d69a"/><stop offset="1" stop-color="#8c6738"/></linearGradient></defs><ellipse cx="70" cy="228" rx="56" ry="8" fill="#000" opacity=".4"/><path d="M39 10H101L110 20V51L101 59H39L30 51V20Z" fill="#141714" stroke="#77766a"/><path d="M39 10V48H101V10M30 20H110" stroke="#a7a593" opacity=".4"/><path d="M43 59H97V71H43Z" fill="url(#n59-metal)"/><path d="M43 71H97L124 96V207L111 222H29L16 207V96Z" fill="url(#n59-glass)" stroke="url(#n59-metal)" stroke-width="1.5"/><path d="M43 71L31 101V204L29 222M97 71L109 101V204L111 222M16 96L31 101H109L124 96M16 207L31 204H109L124 207" stroke="#c9ab6c" opacity=".48"/><path d="M35 106H105V196H35Z" fill="#090c0a" stroke="#8a703e"/><path d="M41 112H99V190H41Z" stroke="#443b27"/><text x="70" y="145" fill="#e3c17d" font-family="Georgia,serif" font-size="13" text-anchor="middle">НОТА</text><text x="70" y="173" fill="#e3c17d" font-family="Georgia,serif" font-size="25" text-anchor="middle">59</text><path d="M22 99V202M35 101V194" stroke="#e3dcc0" opacity=".17" stroke-width="2"/></svg>`;}
+}
+new MutationObserver(sync).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',sync,{passive:true});document.fonts?.ready.then(sync);sync();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
