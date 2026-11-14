@@ -45,6 +45,15 @@ const panel=el('dialog');panel.id='brand-panel';panel.setAttribute('aria-labelle
 const search=el('input',undefined,'bp-search');search.type='search';search.placeholder='Найти бренд';search.setAttribute('aria-label','Поиск бренда');const list=el('div',undefined,'bp-list');panel.append(head,search,list);document.body.append(panel);
 function draw(){trigger.textContent=(s.selectedOptions[0]?.textContent||'Все бренды')+' ⌄';list.replaceChildren();const q=search.value.trim().toLowerCase();let found=0;for(const o of s.options){if(o.value&&!o.textContent.toLowerCase().includes(q))continue;found++;const row=el('button',undefined,'bp-row');row.type='button';row.setAttribute('aria-pressed',String(o.value===s.value));const copy=el('span',undefined,'bp-copy');copy.append(brandName(o.value,o.textContent));if(typeof data!=='undefined'&&data?.items)copy.append(el('small','Ароматов: '+data.items.filter(p=>!o.value||p.brand===o.value).length));row.append(copy);if(o.value===s.value){const tick=el('span','✓');tick.setAttribute('aria-hidden','true');row.append(tick);}row.onclick=()=>{s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));panel.close();draw();};list.append(row);}if(!found)list.append(el('p','Бренд не найден','bp-empty'));}
 trigger.onclick=()=>{search.value='';draw();panel.showModal();trigger.setAttribute('aria-expanded','true');close.focus();};close.onclick=()=>panel.close();panel.addEventListener('close',()=>{trigger.setAttribute('aria-expanded','false');trigger.focus();});search.oninput=draw;s.addEventListener('change',draw);new MutationObserver(draw).observe(s,{childList:true,subtree:true});draw();
+const catalog=document.getElementById('catalog');
+function styleCatalogCard(card){
+ const label=card.querySelector('.info > .brand');if(!label)return;
+ const key=label.dataset.n59BrandKey||label.textContent.trim(),p=profiles[key];if(!p)return;
+ label.dataset.n59BrandKey=key;label.textContent=p[0];
+ Object.assign(label.style,{fontFamily:p[1],fontSize:Math.max(12,Math.min(18,Math.round(p[2]*.6)))+'px',fontWeight:String(p[3]),letterSpacing:(parseFloat(p[4])*.5)+'em',textTransform:'none',lineHeight:'1.45',whiteSpace:'normal',overflowWrap:'anywhere'});
+}
+function styleCatalogTree(root){if(!(root instanceof Element))return;if(root.matches('.card'))styleCatalogCard(root);else for(const card of root.querySelectorAll('.card'))styleCatalogCard(card);}
+if(catalog){styleCatalogTree(catalog);new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)styleCatalogTree(node);}).observe(catalog,{childList:true});}
 })();
 
 (() => {
