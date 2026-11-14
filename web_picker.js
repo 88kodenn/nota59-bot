@@ -4,7 +4,7 @@ const hero=document.querySelector('.hero-copy');
 if(!hero||document.getElementById('n59-picker'))return;
 const make=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const btn=(text,fn,cls)=>{const b=make('button',text,cls);b.type='button';b.onclick=fn;return b;};
-const current=()=>typeof data!=='undefined'&&Array.isArray(data?.items)?data:null;
+const current=()=>typeof data!=='undefined'&&Array.isArray(data?.items)?data.items:null;
 const clean=s=>String(s).toLowerCase().replaceAll('ё','е').trim();
 const style=make('style');style.textContent=`
 #n59-picker-open{position:relative;z-index:2;display:block;margin-top:16px;padding:13px 16px;min-height:48px;border:1px solid var(--gold);border-radius:10px;background:linear-gradient(110deg,#b68b46,#edcf8d,#b88d4c);color:#20170d;font:600 14px var(--sans);max-width:100%}
@@ -70,4 +70,31 @@ function results(){
 }
 const trigger=btn('Подобрать аромат',()=>{step=0;answers=[null,null];render();panel.showModal();focusHeading();});trigger.id='n59-picker-open';trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-controls','n59-picker');hero.append(trigger,make('span','Или выберите самостоятельно в каталоге ниже','n59-picker-skip'));
 panel.addEventListener('close',()=>trigger.focus({preventScroll:true}));
+})();
+
+// Independent sound feedback for the product volume buttons only.
+(() => {
+'use strict';
+function start(){
+const dialog=document.getElementById('dialog'),head=dialog?.querySelector('.detail-top');if(!head||document.getElementById('n59-volume-sound'))return;
+const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
+let enabled=true,context=null,voice=null,sequence=0;
+try{enabled=localStorage.getItem('nota59-volume-sound-v1')!=='off';}catch(e){}
+const toggle=document.createElement('button');toggle.id='n59-volume-sound';toggle.type='button';
+Object.assign(toggle.style,{minHeight:'44px',flexShrink:'0',padding:'6px 8px',border:'1px solid var(--line)',borderRadius:'8px',background:'transparent',color:'var(--gold)',font:'500 10px/1.4 var(--sans)'});
+function label(){toggle.textContent=enabled?'Звук: вкл':'Звук: выкл';toggle.setAttribute('aria-pressed',String(enabled));toggle.setAttribute('aria-label',enabled?'Выключить звук выбора объёма':'Включить звук выбора объёма');}
+function stop(){sequence++;if(voice){try{voice.stop();}catch(e){}voice=null;}}
+toggle.addEventListener('click',()=>{enabled=!enabled;stop();label();try{localStorage.setItem('nota59-volume-sound-v1',enabled?'on':'off');}catch(e){}});
+const close=head.querySelector('#close');if(close)close.before(toggle);else head.append(toggle);label();
+function bubble(){if(!enabled||document.hidden||!dialog.open)return;stop();const token=sequence,started=performance.now();
+try{if(!context||context.state==='closed')context=new Audio();
+const play=()=>{if(token!==sequence||!enabled||document.hidden||!dialog.open||performance.now()-started>500||context.state!=='running')return;
+const oscillator=context.createOscillator(),gain=context.createGain(),now=context.currentTime;voice=oscillator;oscillator.type='sine';oscillator.frequency.setValueAtTime(220,now);oscillator.frequency.exponentialRampToValueAtTime(660,now+.035);oscillator.frequency.exponentialRampToValueAtTime(150,now+.16);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.065,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.17);oscillator.connect(gain);gain.connect(context.destination);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();if(voice===oscillator)voice=null;};oscillator.start(now);oscillator.stop(now+.18);};
+if(context.state==='running')play();else context.resume().then(play).catch(()=>{});
+}catch(e){}
+}
+dialog.addEventListener('click',e=>{const button=e.target instanceof Element?e.target.closest('#v5,#v10'):null;if(button&&!button.disabled&&e.isTrusted)bubble();},true);
+dialog.addEventListener('close',stop);document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();if(context?.state==='running')context.suspend().catch(()=>{});}});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
