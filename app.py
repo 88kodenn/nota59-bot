@@ -198,6 +198,11 @@ ul {{ padding-left: 20px; }}
 
 def main():
     catalog, photos = load_catalog()
+    banner_path = _safe_photo_path('Nota59-banner.JPG')
+    if banner_path:
+        photos['/assets/nota59-banner.jpg'] = banner_path
+    else:
+        logger.warning('Hero image Nota59-banner.JPG is missing')
     catalog_data = json.loads(catalog)
 
     catalog_index = {
@@ -241,22 +246,27 @@ def main():
 </style>'''
     page = page.replace(b'</head>', purchase_style + b'</head>', 1)
 
-    hero_style = b'''<style id="n59-angular-hero">
-.wrap .hero{display:block;min-height:0;padding:28px;border:1px solid var(--line);border-radius:16px;background:radial-gradient(ellipse at 100% 0,#8c602e24,transparent 70%),linear-gradient(135deg,#191610,#11100e)}
-.wrap .hero:after{display:none}
-.wrap .hero .hero-copy{display:grid;grid-template-columns:minmax(0,1fr) 106px;column-gap:18px;width:100%;max-width:100%;min-width:0}
-.wrap .hero .eyebrow{grid-column:1/-1}
-.wrap .hero .hero-copy h1{grid-column:1;min-width:0;min-height:150px;margin:14px 0 12px;overflow-wrap:anywhere}
-.wrap .hero .hero-copy>p{grid-column:1/-1;max-width:100%;margin:0;line-height:1.7}
-.wrap .hero .n59-picker-skip{grid-column:1/-1;max-width:100%;line-height:1.6}
-.wrap .hero #n59-picker-open{grid-column:1/-1;max-width:100%;min-height:48px;margin-top:18px;padding:13px 20px;border-radius:10px;white-space:normal;overflow-wrap:anywhere;justify-self:start}
-.wrap .hero .bottle{display:flex;position:absolute;top:76px;right:36px;bottom:auto;width:78px;height:116px;border:1px solid #9b8450;border-radius:3px;transform:none;background:linear-gradient(105deg,#343532 0%,#121412 13%,#090b0a 45%,#1d211e 85%,#353831 100%);box-shadow:inset 3px 0 4px #ffffff0b,inset -3px 0 5px #000a,0 12px 20px #0007;pointer-events:none}
-.wrap .hero .bottle:before{top:-30px;left:-3px;width:82px;height:28px;border:1px solid #4e5049;border-radius:2px;background:linear-gradient(100deg,#484a43,#171916 30%,#272a24 75%,#505148);box-shadow:inset 0 2px 1px #ffffff15,0 3px 3px #0008}
-.wrap .hero .bottle:after{inset:8px;border:1px solid #b59b592e;border-radius:1px}
-.wrap .hero .bottle span{font:500 10px/1.4 var(--sans);letter-spacing:1px;color:#c8ae73}
-@media(max-width:699px){.wrap .hero{padding:24px 20px}.wrap .hero .hero-copy{grid-template-columns:minmax(0,1fr) 72px;column-gap:12px}.wrap .hero .hero-copy h1{min-height:132px}.wrap .hero #n59-picker-open{width:100%;max-width:100%;padding:13px 14px;justify-self:stretch}.wrap .hero .bottle{display:flex;top:78px;right:24px;width:58px;height:96px}.wrap .hero .bottle:before{top:-26px;left:-3px;width:62px;height:24px}.wrap .hero .bottle span{font-size:8px;letter-spacing:.5px}}
-@media(max-width:359px){.wrap .hero{padding:22px 16px}.wrap .hero .hero-copy{grid-template-columns:minmax(0,1fr) 58px;column-gap:10px}.wrap .hero .bottle{display:flex;right:19px;width:48px;height:86px}.wrap .hero .bottle:before{width:52px}.wrap .hero .bottle span{font-size:7px}}
-</style>'''
+    hero_style = b'''<style id="n59-photo-hero">
+.wrap .hero{display:flex!important;flex-direction:column;min-height:0!important;padding:0!important;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#14120f!important}
+.wrap .hero:after{display:none!important}
+.wrap .hero .bottle{display:none!important}
+.wrap .hero .n59-hero-photo{display:block;width:100%;max-width:100%;height:auto;flex:none;margin:0;padding:0;object-fit:contain;background:#14120f}
+.wrap .hero .hero-copy{display:block!important;box-sizing:border-box;width:100%;max-width:100%;min-width:0;padding:26px 28px}
+.wrap .hero .hero-copy h1{min-height:0!important;padding:0!important;margin:14px 0 16px;overflow-wrap:anywhere}
+.wrap .hero .hero-copy>p{max-width:100%!important;margin:0;line-height:1.7}
+.wrap .hero .n59-picker-skip{max-width:100%!important;line-height:1.6}
+.wrap .hero #n59-picker-open{width:100%;max-width:100%!important;min-height:48px;margin-top:18px;padding:13px 20px;border-radius:10px;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:699px){.wrap .hero .hero-copy{padding:22px 20px}.wrap .hero #n59-picker-open{padding:13px 14px}}
+@media(max-width:359px){.wrap .hero .hero-copy{padding:20px 16px}}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+const hero=document.querySelector('.hero');if(!hero||hero.querySelector('.n59-hero-photo'))return;
+const photo=document.createElement('img');photo.className='n59-hero-photo';photo.alt='';photo.setAttribute('aria-hidden','true');photo.decoding='async';photo.loading='eager';photo.setAttribute('fetchpriority','high');
+photo.addEventListener('error',function(){photo.remove();});
+photo.src='/assets/nota59-banner.jpg?v=cd5b4d08';hero.prepend(photo);hero.querySelector('.bottle')?.remove();
+},{once:true});
+</script>'''
     page = page.replace(b'</head>', hero_style + b'</head>', 1)
 
     class Handler(BaseHTTPRequestHandler):
