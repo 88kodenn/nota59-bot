@@ -6,8 +6,9 @@ from pathlib import Path
 import runpy
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 from catalog_note_fixes import apply_note_fixes
+import orders
 
 BASE = Path(__file__).resolve().parent
 logger = logging.getLogger('catalog.app')
@@ -16,16 +17,20 @@ logger = logging.getLogger('catalog.app')
 def _safe_photo_path(raw):
     if not raw:
         return None
+
     raw_path = Path(raw)
     if raw_path.is_absolute() or '..' in raw_path.parts:
         return None
+
     path = (BASE / raw).resolve()
     try:
         path.relative_to(BASE)
     except ValueError:
         return None
+
     if not path.is_file() or path.suffix.lower() not in {'.jpg', '.jpeg', '.png'}:
         return None
+
     return path
 
 
@@ -33,81 +38,200 @@ def load_picker_categories():
     try:
         tree = ast.parse((BASE / 'scent_picker.py').read_text(encoding='utf-8'))
         for node in tree.body:
-            if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'CATEGORIES' for t in node.targets):
+            if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == 'CATEGORIES'
+                for target in node.targets
+            ):
                 categories = ast.literal_eval(node.value)
                 if isinstance(categories, dict):
-                    return {key: list(names) for key, names in categories.items() if isinstance(key, str) and isinstance(names, (list, tuple)) and all(isinstance(name, str) for name in names)}
+                    return {
+                        key: list(names)
+                        for key, names in categories.items()
+                        if isinstance(key, str)
+                        and isinstance(names, (list, tuple))
+                        and all(isinstance(name, str) for name in names)
+                    }
     except (OSError, SyntaxError, ValueError, TypeError):
         logger.exception('Не удалось загрузить подборки ароматов')
+
     return {}
 
 
 def load_catalog():
     tree = ast.parse((BASE / 'main.py').read_text(encoding='utf-8'))
     values = {}
+
     for node in tree.body:
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if isinstance(target, ast.Name) and target.id in {'CATALOG', 'SELLER', 'BRAND_WORDS'}:
+                if isinstance(target, ast.Name) and target.id in {
+                    'CATALOG', 'SELLER', 'BRAND_WORDS'
+                }:
                     try:
                         values[target.id] = ast.literal_eval(node.value)
                     except (ValueError, SyntaxError) as exc:
-                        raise ValueError(f'Некорректное значение {target.id}: {exc}') from exc
+                        raise ValueError(
+                            f'Некорректное значение {target.id}: {exc}'
+                        ) from exc
 
     required = {'CATALOG', 'SELLER', 'BRAND_WORDS'}
     missing = required - values.keys()
+
     if missing:
-        raise ValueError(f'Не найдены обязательные переменные: {", ".join(sorted(missing))}')
+        raise ValueError(
+            f'Не найдены обязательные переменные: {", ".join(sorted(missing))}'
+        )
 
     brands = list(values['BRAND_WORDS'])
     items = []
     photos = {}
-    for i, entry in enumerate(values['CATALOG']):
+
+    for index, entry in enumerate(values['CATALOG']):
         try:
-            name, p5, p10, description, notes, photo = entry
+            name, price_5, price_10, description, notes, photo = entry
         except (TypeError, ValueError) as exc:
-            logger.warning('Пропущена некорректная запись каталога #%s: %s', i, exc)
+            logger.warning('Пропущена некорректная запись каталога #%s: %s', index, exc)
             continue
 
         image = None
         if photo:
-            path = _safe_photo_path(str(photo))
-            if path:
-                image = f'/photos/{i}'
-                photos[image] = path
+            photo_path = _safe_photo_path(str(photo))
+            if photo_path:
+                image = f'/photos/{index}'
+                photos[image] = photo_path
 
-        brand = next((b for b in brands if name.startswith(b + ' ')), '')
-        items.append(dict(name=name, brand=brand, price5=p5, price10=p10, description=description, notes=notes, image=image))
+        brand = next(
+            (brand for brand in brands if name.startswith(brand + ' ')),
+            '',
+        )
+        items.append({
+            'name': name,
+            'brand': brand,
+            'price5': price_5,
+            'price10': price_10,
+            'description': description,
+            'notes': notes,
+            'image': image,
+        })
 
     try:
-        arrivals = json.loads((BASE / 'new_arrivals.json').read_text(encoding='utf-8'))
+        arrivals = json.loads(
+            (BASE / 'new_arrivals.json').read_text(encoding='utf-8')
+        )
     except (OSError, json.JSONDecodeError) as exc:
         logger.warning('Не удалось загрузить new_arrivals.json: %s', exc)
         arrivals = []
 
     if not isinstance(arrivals, list):
-        logger.warning('new_arrivals.json должен содержать список; значение проигнорировано')
+        logger.warning(
+            'new_arrivals.json должен содержать список; значение проигнорировано'
+        )
         arrivals = []
 
-    existing = {item['name'] for item in items}
+    existing_names = {item['name'] for item in items}
+
     for arrival in arrivals:
         if not isinstance(arrival, dict) or not arrival.get('name'):
             logger.warning('Пропущена некорректная запись новинок: %r', arrival)
             continue
-        if arrival['name'] not in existing:
+
+        if arrival['name'] not in existing_names:
             items.append(arrival)
-            existing.add(arrival['name'])
+            existing_names.add(arrival['name'])
 
     apply_note_fixes(items)
-    return json.dumps(dict(items=items, seller=values['SELLER'], pickerCategories=load_picker_categories()), ensure_ascii=False).encode('utf-8'), photos
+
+    catalog_payload = {
+        'items': items,
+        'seller': values['SELLER'],
+        'pickerCategories': load_picker_categories(),
+    }
+
+    return (
+        json.dumps(catalog_payload, ensure_ascii=False).encode('utf-8'),
+        photos,
+    )
+
+
+def _format_money(value):
+    return f'{value:,}'.replace(',', ' ') + ' ₽'
+
+
+def _order_page(order):
+    item_lines = []
+
+    for item in order['items']:
+        item_lines.append(
+            f'<li>{item["brand"]} — {item["name"]} — '
+            f'{item["volume"]} мл × {item["qty"]} — '
+            f'{_format_money(item["total"])}</li>'
+        )
+
+    receipt = 'самовывоз' if order['receipt'] == 'pickup' else 'доставка'
+
+    return f'''<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Заказ {order['order_number']} — НОТА 59</title>
+<style>
+body {{ margin: 0; padding: 24px; background: #0e0d0b; color: #f3eade; font-family: system-ui, sans-serif; }}
+main {{ max-width: 560px; margin: auto; padding: 22px; background: #14120f; border: 1px solid #cda76430; border-radius: 16px; }}
+h1 {{ margin: 0 0 16px; color: #dfbb78; font-size: 24px; }}
+.status {{ display: inline-block; padding: 6px 12px; border: 1px solid #dfbb78; border-radius: 999px; color: #dfbb78; }}
+ul {{ padding-left: 20px; }}
+.total {{ color: #dfbb78; font-weight: 600; }}
+</style>
+</head>
+<body>
+<main>
+<h1>Заказ {order['order_number']}</h1>
+<p><span class="status">{order['status_label']}</span></p>
+<ul>{''.join(item_lines)}</ul>
+<p class="total">Итого за товары: {_format_money(order['total'])}</p>
+<p>Получение: {receipt}</p>
+</main>
+</body>
+</html>'''
 
 
 def main():
     catalog, photos = load_catalog()
+    catalog_data = json.loads(catalog)
+
+    catalog_index = {
+        (item['name'], item.get('brand', '')): item
+        for item in catalog_data['items']
+    }
+
+    orders.init_db()
+
+    bot_token = os.environ.get('BOT_TOKEN', '')
+    seller_chat_id = os.environ.get('SELLER_CHAT_ID', '')
+    admin_token = os.environ.get('ADMIN_TOKEN', '')
+
     page = (BASE / 'web_catalog.html').read_bytes()
-    scripts = b''.join(b'<script>' + (BASE / name).read_bytes() + b'</script>' for name in ('web_picker.js', 'note_pyramids.js', 'note_colors.js', 'web_rules.js', 'web_theme.js', 'web_new_arrivals.js', 'web_enhancements.js', 'note-realistic-icons.js', 'brand_ui.js'))
+
+    script_names = (
+        'web_picker.js',
+        'note_pyramids.js',
+        'note_colors.js',
+        'web_rules.js',
+        'web_theme.js',
+        'web_new_arrivals.js',
+        'web_enhancements.js',
+        'note-realistic-icons.js',
+        'brand_ui.js',
+        'web_orders.js',
+    )
+
+    scripts = b''.join(
+        b'<script>' + (BASE / name).read_bytes() + b'</script>'
+        for name in script_names
+    )
     page = page.replace(b'</body>', scripts + b'</body>', 1)
-    # Keep legacy DOM anchors for cart initialization; hide only redundant product actions.
+
     purchase_style = b'''<style id="n59-compact-purchase">
 #dialog #order,#dialog #n59-add,#dialog .detail > .hint{display:none!important}
 #dialog .purchase{display:grid!important;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:10px 14px max(10px,env(safe-area-inset-bottom))}
@@ -116,6 +240,7 @@ def main():
 @media(max-width:360px){#dialog .purchase{grid-template-columns:minmax(0,1fr)}#dialog #chosen{font-size:18px}}
 </style>'''
     page = page.replace(b'</head>', purchase_style + b'</head>', 1)
+
     hero_style = b'''<style id="n59-angular-hero">
 .wrap .hero{display:block;min-height:0;padding:28px;border:1px solid var(--line);border-radius:16px;background:radial-gradient(ellipse at 100% 0,#8c602e24,transparent 70%),linear-gradient(135deg,#191610,#11100e)}
 .wrap .hero:after{display:none}
@@ -135,36 +260,118 @@ def main():
     page = page.replace(b'</head>', hero_style + b'</head>', 1)
 
     class Handler(BaseHTTPRequestHandler):
+        def _send(self, status, body, mime):
+            self.send_response(status)
+            self.send_header('Content-Type', mime)
+            self.send_header('Content-Length', str(len(body)))
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Referrer-Policy', 'no-referrer')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _json(self, status, payload):
+            self._send(
+                status,
+                json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+                'application/json; charset=utf-8',
+            )
+
+        def _error(self, status, message):
+            self._json(status, {'ok': False, 'error': message})
+
+        def _read_json(self):
+            content_length = int(self.headers.get('Content-Length', '0') or 0)
+
+            if content_length <= 0 or content_length > 100000:
+                raise ValueError('Некорректный размер запроса')
+
+            return json.loads(
+                self.rfile.read(content_length).decode('utf-8')
+            )
+
         def do_GET(self):
             try:
-                path = urlsplit(self.path).path
+                parsed_url = urlsplit(self.path)
+                path = parsed_url.path
+                query = parse_qs(parsed_url.query)
+
                 if path in ('/', '/index.html'):
                     body, mime = page, 'text/html; charset=utf-8'
                 elif path == '/api/catalog':
                     body, mime = catalog, 'application/json; charset=utf-8'
+                elif path == '/api/orders':
+                    init_data = query.get('init', [''])[0]
+                    user = orders.validate_init_data(init_data, bot_token)
+                    user_orders = orders.list_orders(user['id'])
+                    self._json(200, {'ok': True, 'orders': user_orders})
+                    return
+                elif path.startswith('/order/'):
+                    order_number = path.removeprefix('/order/')
+                    init_data = query.get('init', [''])[0]
+                    user = orders.validate_init_data(init_data, bot_token)
+                    order = orders.get_order(order_number, user['id'])
+                    self._send(
+                        200,
+                        _order_page(order).encode('utf-8'),
+                        'text/html; charset=utf-8',
+                    )
+                    return
                 elif path == '/healthz':
                     body, mime = b'ok', 'text/plain; charset=utf-8'
                 elif path in photos:
-                    image = photos[path]
-                    body = image.read_bytes()
-                    mime = 'image/png' if image.suffix.lower() == '.png' else 'image/jpeg'
+                    image_path = photos[path]
+                    body = image_path.read_bytes()
+                    mime = 'image/png' if image_path.suffix.lower() == '.png' else 'image/jpeg'
                 else:
                     self.send_error(404)
                     return
-                self.send_response(200)
-                self.send_header('Content-Type', mime)
-                self.send_header('Content-Length', str(len(body)))
-                self.send_header('X-Content-Type-Options', 'nosniff')
-                self.send_header('Referrer-Policy', 'no-referrer')
-                self.send_header('Cache-Control', 'no-cache')
-                self.end_headers()
-                self.wfile.write(body)
+
+                self._send(200, body, mime)
             except (BrokenPipeError, ConnectionResetError):
                 logger.debug('Клиент закрыл соединение')
+            except ValueError as exc:
+                self._error(400, str(exc))
             except Exception:
                 logger.exception('Ошибка обработки запроса %s', self.path)
                 try:
                     self.send_error(500)
+                except Exception:
+                    pass
+
+        def do_POST(self):
+            try:
+                path = urlsplit(self.path).path
+
+                if path == '/api/orders':
+                    payload = self._read_json()
+                    result = orders.create_order(
+                        payload,
+                        catalog_index,
+                        bot_token,
+                        seller_chat_id,
+                    )
+                    self._json(201, result)
+                    return
+
+                if path.startswith('/api/orders/') and path.endswith('/status'):
+                    if not admin_token or self.headers.get('X-Admin-Key') != admin_token:
+                        self._error(403, 'Доступ запрещён')
+                        return
+
+                    order_number = path.removeprefix('/api/orders/').removesuffix('/status')
+                    payload = self._read_json()
+                    result = orders.update_status(order_number, payload.get('status', ''))
+                    self._json(200, result)
+                    return
+
+                self.send_error(404)
+            except ValueError as exc:
+                self._error(400, str(exc))
+            except Exception:
+                logger.exception('Ошибка обработки запроса %s', self.path)
+                try:
+                    self._error(500, 'Внутренняя ошибка сервера')
                 except Exception:
                     pass
 
@@ -181,8 +388,10 @@ def main():
 
     server = ThreadingHTTPServer(('0.0.0.0', port), Handler)
     server.daemon_threads = True
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+
     try:
         runpy.run_path(str(BASE / 'main.py'), run_name='__main__')
     except SystemExit:
