@@ -14,6 +14,20 @@ SOURCES = {
 OLD_SELECTOR = b'#dialog #v5,#dialog #v10,#n59-order-submit,#n59-selected-plus,#n59-selected-minus,#n59-panel button[data-action="plus"],#n59-panel button[data-action="minus"]'
 CAP_SELECTOR = b'#n59-selected-plus,#n59-selected-minus,#n59-panel button[data-action="plus"],#n59-panel button[data-action="minus"]'
 
+
+def strip_legacy_brand_block(body):
+    start_marker = b'<!-- n59-brand-logos:start -->'
+    end_marker = b'<!-- n59-brand-logos:end -->'
+    start = body.find(start_marker)
+    if start < 0:
+        return body
+    end = body.find(end_marker, start + len(start_marker))
+    if end < 0:
+        logging.getLogger(__name__).error('Incomplete legacy brand block; catalog left intact')
+        return body
+    return body[:start] + body[end + len(end_marker):]
+
+
 def install():
     original_server = app.ThreadingHTTPServer
     script = (BASE / 'web_sounds.js').read_bytes()
@@ -34,6 +48,7 @@ def install():
 
         def send(self, status, body, mime):
             if status == 200 and mime.startswith('text/html') and b'id="catalog"' in body:
+                body = strip_legacy_brand_block(body)
                 if OLD_SELECTOR not in body:
                     logging.getLogger(__name__).warning('Legacy sound selector not found; check deployment source')
                 body = body.replace(OLD_SELECTOR, CAP_SELECTOR)
