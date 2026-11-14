@@ -14,7 +14,7 @@ NOTE_FIXES = {
 }
 
 IMAGE_OVERRIDES = {
-    'Jean Paul Gaultier Le Male Le Parfum': 'https://raw.githubusercontent.com/88kodenn/nota59-bot/4d58548fc043a337a35d2a8bf16a6a2d217955bb/Photoroom_20261114_114707.jpeg',
+    'Jean Paul Gaultier Le Male Le Parfum': 'https://raw.githubusercontent.com/88kodenn/nota59-bot/refs/heads/feature/orders-mvp/Photoroom_20261114_152912.jpeg',
 }
 
 
