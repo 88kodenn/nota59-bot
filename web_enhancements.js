@@ -9,6 +9,7 @@ const key=p=>JSON.stringify([p.brand,p.name]),storageKey='nota59-favorites-v1';
 let favorites=new Set(),storageOK=true;
 try{const saved=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(saved))favorites=new Set(saved.filter(v=>typeof v==='string').slice(0,500));}catch(e){storageOK=false;}
 const style=make('style');style.id='n59-extra-ui';style.textContent=`
+#catalog .cover>img,#dialog .cover>img{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;object-fit:cover!important;object-position:center!important}
 #n59-fav-launch{display:flex;justify-content:flex-end;margin:0 0 10px}#n59-fav-launch[hidden],#n59-search-empty[hidden]{display:none}
 .n59-extra-button{min-height:44px;padding:10px 13px;border:1px solid var(--line);border-radius:8px;background:#211b13;color:var(--gold);font:500 12px/1.5 var(--sans);touch-action:manipulation}
 #catalog .n59-favorite{position:absolute;top:7px;right:7px;z-index:1;display:grid;place-items:center;width:44px;height:44px;padding:10px;border:1px solid var(--line);border-radius:50%;background:#14120fe6;color:var(--gold);touch-action:manipulation}#catalog .n59-favorite svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6}#catalog .n59-favorite[aria-pressed=true] svg{fill:currentColor}
