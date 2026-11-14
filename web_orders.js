@@ -84,7 +84,7 @@ const style=document.createElement('style');style.id='n59-hero-polish';style.tex
 .wrap .hero .n59-hero-art::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(8,9,7,.48),transparent 62%)}
 .wrap .hero .n59-hero-art h1{grid-area:1/1;position:relative;z-index:2;align-self:start;justify-self:start;box-sizing:border-box;width:48%;max-width:460px;min-height:0!important;margin:32px 0 24px 28px;padding:0!important;font:400 clamp(28px,4vw,48px)/1.1 var(--serif);letter-spacing:-.4px;color:var(--text);overflow-wrap:normal;text-shadow:0 2px 12px #0008}
 .wrap .hero h1 em{font-style:normal;color:var(--gold)}
-.wrap .hero .hero-copy{position:static;display:block!important;box-sizing:border-box;width:100%;max-width:100%;min-height:0;padding:22px 28px 24px}
+.wrap .hero .hero-copy{position:static;display:block!important;box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:0;padding:22px 28px 24px}
 .wrap .hero .hero-copy .eyebrow{display:none!important}
 .wrap .hero .hero-copy>p{display:block!important;max-width:100%!important;margin:0;color:var(--muted);font:400 14px/1.7 var(--sans)}
 .wrap .hero #n59-picker-open{box-sizing:border-box;width:100%;max-width:100%!important;min-height:48px;margin:16px 0 0!important;padding:13px 20px;border:1px solid #dfbb78;border-radius:8px;background:linear-gradient(110deg,#b58a46,#e1bf7c);color:#17130d;font:600 14px/1.4 var(--sans);white-space:normal;text-shadow:none}
@@ -104,4 +104,11 @@ if(brand&&fav){const box=brand.getBoundingClientRect();if(box.width&&box.height)
 new MutationObserver(sync).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',sync,{passive:true});document.fonts?.ready.then(sync);sync();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+
+(() => {
+'use strict';
+const oldTitle='Jump Up And Kiss Me Hedonistic (2021)',newTitle='Jump Up And Kiss Me Hedonistic';
+function patch(){for(const title of document.querySelectorAll('#catalog .card .name,#dialog #title')){if(title.textContent===oldTitle)title.textContent=newTitle;}}
+new MutationObserver(patch).observe(document.body,{childList:true,subtree:true});patch();
 })();
