@@ -72,13 +72,13 @@ const trigger=btn('Подобрать аромат',()=>{step=0;answers=[null,nu
 panel.addEventListener('close',()=>trigger.focus({preventScroll:true}));
 })();
 
-// Shared sound feedback: volume bubble and a neutral checkout press tone.
+// Shared sound feedback: volume bubble and a neutral atomizer spray on checkout press.
 (() => {
 'use strict';
 function start(){
 const dialog=document.getElementById('dialog'),head=dialog?.querySelector('.detail-top');if(!head||document.getElementById('n59-volume-sound'))return;
 const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
-let enabled=true,context=null,voice=null,sequence=0;
+let enabled=true,context=null,voice=null,sequence=0,sprayBuffer=null;
 try{enabled=localStorage.getItem('nota59-volume-sound-v1')!=='off';}catch(e){}
 const toggle=document.createElement('button');toggle.id='n59-volume-sound';toggle.type='button';
 Object.assign(toggle.style,{minHeight:'44px',flexShrink:'0',padding:'6px 8px',border:'1px solid var(--line)',borderRadius:'8px',background:'transparent',color:'var(--gold)',font:'500 10px/1.4 var(--sans)'});
@@ -87,12 +87,14 @@ function stop(){sequence++;if(voice){try{voice.stop();}catch(e){}voice=null;}}
 toggle.addEventListener('click',()=>{enabled=!enabled;stop();label();try{localStorage.setItem('nota59-volume-sound-v1',enabled?'on':'off');}catch(e){}});
 const close=head.querySelector('#close');if(close)close.before(toggle);else head.append(toggle);label();
 function playSound(kind){const host=kind==='order'?document.getElementById('n59-panel'):dialog;if(!enabled||document.hidden||!host?.open)return;stop();const token=sequence,started=performance.now();
-try{if(!context||context.state==='closed')context=new Audio();
+try{if(!context||context.state==='closed'){context=new Audio();sprayBuffer=null;}
 const play=()=>{if(token!==sequence||!enabled||document.hidden||!host.open||performance.now()-started>500||context.state!=='running')return;
-const oscillator=context.createOscillator(),gain=context.createGain(),now=context.currentTime;voice=oscillator;oscillator.type='sine';gain.gain.setValueAtTime(.0001,now);
-if(kind==='order'){oscillator.frequency.setValueAtTime(440,now);oscillator.frequency.setValueAtTime(660,now+.09);gain.gain.exponentialRampToValueAtTime(.05,now+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+.08);gain.gain.exponentialRampToValueAtTime(.05,now+.10);gain.gain.exponentialRampToValueAtTime(.0001,now+.23);}
-else{oscillator.frequency.setValueAtTime(220,now);oscillator.frequency.exponentialRampToValueAtTime(660,now+.035);oscillator.frequency.exponentialRampToValueAtTime(150,now+.16);gain.gain.exponentialRampToValueAtTime(.065,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.17);}
-oscillator.connect(gain);gain.connect(context.destination);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();if(voice===oscillator)voice=null;};oscillator.start(now);oscillator.stop(now+(kind==='order'?.24:.18));};
+const now=context.currentTime;
+if(kind==='order'){
+if(!sprayBuffer){sprayBuffer=context.createBuffer(1,Math.ceil(context.sampleRate*.24),context.sampleRate);const samples=sprayBuffer.getChannelData(0);for(let i=0;i<samples.length;i++)samples[i]=Math.random()*2-1;}
+const source=context.createBufferSource(),filter=context.createBiquadFilter(),gain=context.createGain();source.buffer=sprayBuffer;voice=source;filter.type='bandpass';filter.frequency.setValueAtTime(4200,now);filter.frequency.exponentialRampToValueAtTime(2500,now+.22);filter.Q.value=.65;gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.13,now+.008);gain.gain.exponentialRampToValueAtTime(.065,now+.065);gain.gain.exponentialRampToValueAtTime(.0001,now+.23);source.connect(filter);filter.connect(gain);gain.connect(context.destination);source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();if(voice===source)voice=null;};source.start(now);source.stop(now+.24);return;
+}
+const oscillator=context.createOscillator(),gain=context.createGain();voice=oscillator;oscillator.type='sine';gain.gain.setValueAtTime(.0001,now);oscillator.frequency.setValueAtTime(220,now);oscillator.frequency.exponentialRampToValueAtTime(660,now+.035);oscillator.frequency.exponentialRampToValueAtTime(150,now+.16);gain.gain.exponentialRampToValueAtTime(.065,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.17);oscillator.connect(gain);gain.connect(context.destination);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();if(voice===oscillator)voice=null;};oscillator.start(now);oscillator.stop(now+.18);};
 if(context.state==='running')play();else context.resume().then(play).catch(()=>{});
 }catch(e){}
 }
