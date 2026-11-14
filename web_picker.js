@@ -72,33 +72,42 @@ const trigger=btn('Подобрать аромат',()=>{step=0;answers=[null,nu
 panel.addEventListener('close',()=>trigger.focus({preventScroll:true}));
 })();
 
-// Shared sound feedback: volume bubble and a neutral atomizer spray on checkout press.
+// Shared synthesized sounds: pour for volumes, cap click for quantity, spray for checkout.
 (() => {
 'use strict';
 function start(){
 const dialog=document.getElementById('dialog'),head=dialog?.querySelector('.detail-top');if(!head||document.getElementById('n59-volume-sound'))return;
 const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
-let enabled=true,context=null,voice=null,sequence=0,sprayBuffer=null;
+let enabled=true,context=null,voices=[],sequence=0,sprayBuffer=null,pourBuffer=null;
 try{enabled=localStorage.getItem('nota59-volume-sound-v1')!=='off';}catch(e){}
 const toggle=document.createElement('button');toggle.id='n59-volume-sound';toggle.type='button';
 Object.assign(toggle.style,{minHeight:'44px',flexShrink:'0',padding:'6px 8px',border:'1px solid var(--line)',borderRadius:'8px',background:'transparent',color:'var(--gold)',font:'500 10px/1.4 var(--sans)'});
 function label(){toggle.textContent=enabled?'Звук: вкл':'Звук: выкл';toggle.setAttribute('aria-pressed',String(enabled));toggle.setAttribute('aria-label',enabled?'Выключить звуки кнопок':'Включить звуки кнопок');}
-function stop(){sequence++;if(voice){try{voice.stop();}catch(e){}voice=null;}}
+function stop(){sequence++;for(const source of voices){try{source.stop();}catch(e){}}voices=[];}
+function track(source,nodes){voices.push(source);source.onended=()=>{for(const node of nodes)node.disconnect();voices=voices.filter(v=>v!==source);};}
+function noise(duration){const buffer=context.createBuffer(1,Math.ceil(context.sampleRate*duration),context.sampleRate),samples=buffer.getChannelData(0);for(let i=0;i<samples.length;i++)samples[i]=Math.random()*2-1;return buffer;}
 toggle.addEventListener('click',()=>{enabled=!enabled;stop();label();try{localStorage.setItem('nota59-volume-sound-v1',enabled?'on':'off');}catch(e){}});
 const close=head.querySelector('#close');if(close)close.before(toggle);else head.append(toggle);label();
-function playSound(kind){const host=kind==='order'?document.getElementById('n59-panel'):dialog;if(!enabled||document.hidden||!host?.open)return;stop();const token=sequence,started=performance.now();
-try{if(!context||context.state==='closed'){context=new Audio();sprayBuffer=null;}
+function playSound(kind,host){if(!enabled||document.hidden||!host?.open)return;stop();const token=sequence,started=performance.now();
+try{if(!context||context.state==='closed'){context=new Audio();sprayBuffer=pourBuffer=null;}
 const play=()=>{if(token!==sequence||!enabled||document.hidden||!host.open||performance.now()-started>500||context.state!=='running')return;
 const now=context.currentTime;
 if(kind==='order'){
-if(!sprayBuffer){sprayBuffer=context.createBuffer(1,Math.ceil(context.sampleRate*.24),context.sampleRate);const samples=sprayBuffer.getChannelData(0);for(let i=0;i<samples.length;i++)samples[i]=Math.random()*2-1;}
-const source=context.createBufferSource(),filter=context.createBiquadFilter(),gain=context.createGain();source.buffer=sprayBuffer;voice=source;filter.type='bandpass';filter.frequency.setValueAtTime(4200,now);filter.frequency.exponentialRampToValueAtTime(2500,now+.22);filter.Q.value=.65;gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.13,now+.008);gain.gain.exponentialRampToValueAtTime(.065,now+.065);gain.gain.exponentialRampToValueAtTime(.0001,now+.23);source.connect(filter);filter.connect(gain);gain.connect(context.destination);source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();if(voice===source)voice=null;};source.start(now);source.stop(now+.24);return;
+if(!sprayBuffer)sprayBuffer=noise(.24);
+const source=context.createBufferSource(),filter=context.createBiquadFilter(),gain=context.createGain();source.buffer=sprayBuffer;filter.type='bandpass';filter.frequency.setValueAtTime(4200,now);filter.frequency.exponentialRampToValueAtTime(2500,now+.22);filter.Q.value=.65;gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.13,now+.008);gain.gain.exponentialRampToValueAtTime(.065,now+.065);gain.gain.exponentialRampToValueAtTime(.0001,now+.23);source.connect(filter);filter.connect(gain);gain.connect(context.destination);track(source,[source,filter,gain]);source.start(now);source.stop(now+.24);return;
 }
-const oscillator=context.createOscillator(),gain=context.createGain();voice=oscillator;oscillator.type='sine';gain.gain.setValueAtTime(.0001,now);oscillator.frequency.setValueAtTime(220,now);oscillator.frequency.exponentialRampToValueAtTime(660,now+.035);oscillator.frequency.exponentialRampToValueAtTime(150,now+.16);gain.gain.exponentialRampToValueAtTime(.065,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.17);oscillator.connect(gain);gain.connect(context.destination);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();if(voice===oscillator)voice=null;};oscillator.start(now);oscillator.stop(now+.18);};
+if(kind==='cap'){
+const source=context.createOscillator(),gain=context.createGain(),filter=context.createBiquadFilter();source.type='triangle';source.frequency.setValueAtTime(650,now);source.frequency.exponentialRampToValueAtTime(130,now+.022);source.frequency.exponentialRampToValueAtTime(90,now+.065);filter.type='lowpass';filter.frequency.value=2600;gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.075,now+.002);gain.gain.exponentialRampToValueAtTime(.0001,now+.065);source.connect(filter);filter.connect(gain);gain.connect(context.destination);track(source,[source,filter,gain]);source.start(now);source.stop(now+.075);return;
+}
+if(!pourBuffer)pourBuffer=noise(.34);
+const water=context.createBufferSource(),filter=context.createBiquadFilter(),flow=context.createGain();water.buffer=pourBuffer;filter.type='lowpass';filter.frequency.setValueAtTime(1400,now);filter.frequency.exponentialRampToValueAtTime(700,now+.32);filter.Q.value=1.3;flow.gain.setValueAtTime(.0001,now);flow.gain.exponentialRampToValueAtTime(.13,now+.018);flow.gain.exponentialRampToValueAtTime(.08,now+.16);flow.gain.exponentialRampToValueAtTime(.0001,now+.33);water.connect(filter);filter.connect(flow);flow.connect(context.destination);track(water,[water,filter,flow]);water.start(now);water.stop(now+.34);
+const bubbles=context.createOscillator(),gain=context.createGain();bubbles.type='sine';bubbles.frequency.setValueAtTime(260,now);bubbles.frequency.exponentialRampToValueAtTime(430,now+.045);bubbles.frequency.exponentialRampToValueAtTime(180,now+.11);bubbles.frequency.exponentialRampToValueAtTime(340,now+.19);bubbles.frequency.exponentialRampToValueAtTime(140,now+.32);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.035,now+.012);gain.gain.exponentialRampToValueAtTime(.012,now+.11);gain.gain.exponentialRampToValueAtTime(.028,now+.20);gain.gain.exponentialRampToValueAtTime(.0001,now+.33);bubbles.connect(gain);gain.connect(context.destination);track(bubbles,[bubbles,gain]);bubbles.start(now);bubbles.stop(now+.34);
+};
 if(context.state==='running')play();else context.resume().then(play).catch(()=>{});
 }catch(e){}
 }
-document.addEventListener('click',e=>{const button=e.target instanceof Element?e.target.closest('#dialog #v5,#dialog #v10,#n59-order-submit'):null;if(button&&!button.disabled&&button.getAttribute('aria-disabled')!=='true'&&e.isTrusted)playSound(button.id==='n59-order-submit'?'order':'volume');},true);
+const selector='#dialog #v5,#dialog #v10,#n59-order-submit,#n59-selected-plus,#n59-selected-minus,#n59-panel button[data-action="plus"],#n59-panel button[data-action="minus"]';
+document.addEventListener('click',e=>{const button=e.target instanceof Element?e.target.closest(selector):null;if(!button||button.matches(':disabled')||button.getAttribute('aria-disabled')==='true'||!e.isTrusted)return;const kind=button.id==='n59-order-submit'?'order':['v5','v10'].includes(button.id)?'volume':'cap';playSound(kind,button.closest('dialog'));},true);
 dialog.addEventListener('close',stop);document.getElementById('n59-panel')?.addEventListener('close',stop);document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();if(context?.state==='running')context.suspend().catch(()=>{});}});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
