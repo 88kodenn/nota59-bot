@@ -49,6 +49,7 @@ def install():
         def send(self, status, body, mime):
             if status == 200 and mime.startswith('text/html') and b'id="catalog"' in body:
                 body = strip_legacy_brand_block(body)
+                body = body.replace(b"tg.setHeaderColor('#0e0d0b')", b"tg.setHeaderColor('#191610')")
                 if OLD_SELECTOR not in body:
                     logging.getLogger(__name__).warning('Legacy sound selector not found; check deployment source')
                 body = body.replace(OLD_SELECTOR, CAP_SELECTOR)
