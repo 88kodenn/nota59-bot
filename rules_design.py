@@ -18,36 +18,31 @@ ENHANCEMENT = '''<style id="n59-rules-design-v1">
 #n59-rules li:last-child{border-color:#dfbb7855!important;background:linear-gradient(135deg,#302616,#19150e)!important}
 @media(min-width:700px){#n59-rules ol{grid-template-columns:repeat(2,minmax(0,1fr))}#n59-rules li{padding:20px!important}}
 @media(max-width:359px){#n59-rules li{padding:15px 12px!important;gap:5px 9px!important}}
-#n59-decant-info.n59-trust{margin:14px 0 0;padding:22px 18px;border:1px solid #dfbb7838;border-radius:14px;background:linear-gradient(140deg,#231d14,#14120e)}
-#n59-decant-info.n59-trust h2{margin:0 0 14px;color:var(--gold);font:500 clamp(28px,6.5vw,36px)/1.1 var(--serif)}
-#n59-decant-info.n59-trust p{margin:0;color:var(--muted);font:400 13px/1.75 var(--sans);overflow-wrap:anywhere}
-#n59-decant-info.n59-trust .n59-trust-lead{margin-bottom:8px;color:var(--text);font-weight:500}
-#n59-decant-info.n59-trust .n59-trust-benefits{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:18px 0;padding:0;list-style:none}
-#n59-decant-info.n59-trust li{padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:#dfbb7805;min-width:0}
-#n59-decant-info.n59-trust h3{margin:0 0 5px;padding:0;border:0;color:var(--gold);font:600 13px/1.5 var(--sans)}
-#n59-decant-info.n59-trust li p{font-size:12px;line-height:1.65}
-#n59-decant-info.n59-trust button{width:100%;min-height:48px;padding:13px 16px;border:1px solid #dfbb78;border-radius:9px;background:linear-gradient(110deg,#b58a46,#e1bf7c);color:#17130d;font:600 13px/1.5 var(--sans);touch-action:manipulation}
-@media(min-width:700px){#n59-decant-info.n59-trust{padding:26px}#n59-decant-info.n59-trust .n59-trust-benefits{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#n59-decant-info .n59-decant-benefits{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+#n59-decant-info .n59-decant-benefits h3{margin:16px 0 5px;padding:0;border:0;color:var(--gold);font:600 14px/1.5 var(--sans)}
+#n59-decant-info .n59-decant-benefits h3:first-child{margin-top:0}
+#n59-decant-info .n59-decant-benefits p{margin:0}
 </style><script>
 (()=>{'use strict';function enhance(){const section=document.getElementById('n59-rules');if(!section||section.dataset.designVersion==='1')return;section.dataset.designVersion='1';const titles=['Оригинальная парфюмерия','Оплата заказа','Доставка','Срок отправки','Атомайзеры включены','Подарок к заказу'];section.querySelectorAll('ol > li').forEach((row,index)=>{if(!titles[index])return;const title=document.createElement('h2');title.className='n59-rule-heading';title.textContent=titles[index];row.prepend(title);});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enhance,{once:true});else enhance();})();
 (()=>{
 'use strict';
 function start(){
-const old=document.getElementById('n59-decant-info'),hero=document.querySelector('.hero');if(!old||!hero||old.classList.contains('n59-trust'))return;
+const details=document.getElementById('n59-decant-info'),body=details?.querySelector('.n59-decant-copy');if(!details||details.tagName!=='DETAILS'||!body||details.dataset.copyVersion==='2')return;
+details.dataset.copyVersion='2';const summary=details.querySelector('summary');if(summary)summary.textContent='Что такое распив?';
 const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
-const section=make('section');section.id=old.id;section.className='n59-trust';section.setAttribute('aria-labelledby','n59-trust-title');
-const heading=make('h2','Оригинальный аромат. Ваш объём.');heading.id='n59-trust-title';
-const lead=make('p','В «Ноте 59» — только оригинальная парфюмерия на распив.');lead.className='n59-trust-lead';
-const copy=make('p','Мы отбираем 5 или 10 мл из оригинального флакона в отдельный атомайзер с распылителем. Не разбавляем и ничего не добавляем.');
-const benefits=make('ul');benefits.className='n59-trust-benefits';
+body.replaceChildren();
+for(const text of [
+'Распив — это покупка части аромата из оригинального полноразмерного флакона. Вместо целого флакона вы выбираете нужный объём — 5 или 10 мл. Мы отбираем эту порцию парфюма в отдельный атомайзер — небольшой флакон с распылителем.',
+'В «Ноте 59» на распив предлагается только оригинальная парфюмерия. Мы не разбавляем парфюм, не смешиваем его с другими составами и ничего не добавляем. Вы получаете аромат из оригинального флакона, а не реплику или имитацию.',
+'Парфюм приходит в отдельном атомайзере, а не в фирменном флаконе бренда. Так можно выбрать небольшой объём для знакомства с ароматом или пользоваться любимой композицией без покупки целого флакона.'
+])body.append(make('p',text));
+const benefits=make('div');benefits.className='n59-decant-benefits';
 for(const [title,text] of [
-['Попробовать','Познакомьтесь с ароматом в повседневной жизни — без покупки целого флакона.'],
-['Чередовать','Соберите небольшой гардероб ароматов: для работы, вечера и особого настроения.'],
-['Взять с собой','Компактный атомайзер удобно положить в сумку или взять в поездку.']
-]){const item=make('li');item.append(make('h3',title),make('p',text));benefits.append(item);}
-const button=make('button','Выбрать аромат');button.type='button';button.addEventListener('click',()=>{const tools=document.querySelector('.tools');tools?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});
-section.append(heading,lead,copy,benefits,button);old.replaceWith(section);
-const sync=()=>section.classList.toggle('n59-rules-hidden',hero.classList.contains('n59-rules-hidden'));sync();new MutationObserver(sync).observe(hero,{attributes:true,attributeFilter:['class']});
+['Попробовать','Поносите аромат несколько дней в привычной обстановке и решите, подходит ли он вам, прежде чем покупать полноразмерный флакон.'],
+['Чередовать','Выбирайте разные ароматы для работы, вечера, времени года и настроения — не обязательно покупать по большому флакону каждого.'],
+['Взять с собой','Компактный атомайзер удобно положить в сумку или взять в поездку, оставив большой флакон дома.']
+])benefits.append(make('h3',title),make('p',text));
+body.append(benefits);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
