@@ -3,6 +3,8 @@
 REMOVED_RULE = "'По вопросам отмены заказа, возврата или повреждения при доставке свяжитесь с продавцом. Отмена и возврат рассматриваются в соответствии с применимым законодательством.'\n".encode('utf-8')
 
 ENHANCEMENT = '''<style id="n59-rules-design-v1">
+#n59-navigation button svg,#n59-navigation #n59-cart svg{overflow:visible}
+#n59-navigation button svg path,#n59-navigation #n59-cart svg path{transform-box:fill-box;transform-origin:center;transform:scale(1.25)}
 #n59-rules{padding:24px 0 20px!important}
 #n59-rules #n59-rules-title{font:500 clamp(34px,8vw,44px)/1.08 var(--serif)!important;color:var(--gold);margin:0 0 8px!important;border:0!important;box-shadow:none!important}
 #n59-rules #n59-rules-title:focus{outline:none!important}
