@@ -6,6 +6,7 @@ import app
 import banner_delivery
 import special_orders
 import rules_design
+import availability
 
 BASE = Path(__file__).resolve().parent
 SOURCES = {
@@ -42,6 +43,7 @@ def install():
     if script.count(needle) != 1:
         raise RuntimeError('Unexpected sample audio stop handler; review web_sounds.js')
     script = script.replace(needle, replacement, 1)
+    script += b'\n' + (BASE / 'web_availability.js').read_bytes()
 
     def server(address, handler):
         original_get = handler.do_GET
@@ -81,6 +83,7 @@ def install():
     app.ThreadingHTTPServer = server
 
 if __name__ == '__main__':
+    availability.install(app)
     special_orders.install(app, BASE)
     banner_delivery.install(app, BASE)
     install()
