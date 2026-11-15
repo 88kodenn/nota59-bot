@@ -9,6 +9,7 @@ import rules_design
 import availability
 import telegram_contact
 import gift_sets
+import gift_visuals
 
 BASE = Path(__file__).resolve().parent
 SOURCES = {
@@ -91,5 +92,6 @@ if __name__ == '__main__':
     special_orders.install(app, BASE)
     banner_delivery.install(app, BASE)
     gift_sets.install(app, BASE)
+    gift_visuals.install(app, BASE)
     install()
     app.main()
