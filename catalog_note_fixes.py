@@ -15,11 +15,11 @@ NOTE_FIXES = {
 }
 
 IMAGE_FILES = {
-    'Amouage Interlude Man': 'Amouage interlude.JPG',
-    'Amouage Interlude Black Iris Man': 'Amouage black iris man .JPG',
+    'Amouage Interlude Man': 'Amouage interlude man .JPG',
+    'Amouage Interlude Black Iris Man': 'Interlude black iris man .JPG',
     'Amouage Purpose 50': 'Amouage purpose 50.JPG',
     'Essential Parfums Bois Imperial': 'Bois imperial .JPG',
-    'Clive Christian Jump Up And Kiss Me Hedonistic (2021)': 'Clive Christian hedonistic .JPG',
+    'Clive Christian Jump Up And Kiss Me Hedonistic (2021)': 'Clive Christian hedonistic .JPEG',
     'Creed Aventus': 'Creed Aventus .JPG',
     'Creed Absolu Aventus 2025': 'Creed Aventus absolu 2025.JPG',
     'Ex Nihilo The Hedonist Extrait': 'Ex nihilo The hedonist extrait.JPG',
