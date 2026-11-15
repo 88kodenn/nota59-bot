@@ -7,6 +7,7 @@ import banner_delivery
 import special_orders
 import rules_design
 import availability
+import telegram_contact
 
 BASE = Path(__file__).resolve().parent
 SOURCES = {
@@ -58,6 +59,8 @@ def install():
                     logging.getLogger(__name__).warning('Legacy sound selector not found; check deployment source')
                 body = body.replace(OLD_SELECTOR, CAP_SELECTOR)
                 body = body.replace(b'</body>', b'<script>' + script + b'</script></body>', 1)
+            if status == 200 and ('javascript' in mime or mime.startswith('text/html')):
+                body = telegram_contact.patch(body)
             return original_send(self, status, body, mime)
 
         def get(self):
