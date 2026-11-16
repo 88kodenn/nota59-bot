@@ -1,5 +1,6 @@
 """Temporary availability shared by the catalogue and order validation."""
 import json
+import blue_talisman_card
 
 UNAVAILABLE = frozenset({'Kilian Angels Share'})
 
@@ -7,6 +8,7 @@ UNAVAILABLE = frozenset({'Kilian Angels Share'})
 def install(app):
     if getattr(app, '_n59_availability_installed', False):
         return
+    blue_talisman_card.install(app)
     original_load = app.load_catalog
     original_validate = app.orders._validate_items
 
