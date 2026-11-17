@@ -3,6 +3,7 @@ Costa Azzurra excluded from note corrections.
 Naxos follows the selected Fragrantica outline, not the manufacturer outline.
 """
 from urllib.parse import quote
+from catalog_descriptions import apply_descriptions
 
 NOTE_FIXES = {
     'Creed Absolu Aventus 2025': 'Верх: ананас, чёрная смородина, грейпфрут, розовый перец, бергамот, лимон.\nСердце: кардамон, корица, имбирь.\nБаза: ветивер, пачули.',
@@ -59,6 +60,7 @@ IMAGE_OVERRIDES = {name: IMAGE_BASE + quote(filename, safe='') for name, filenam
 
 
 def apply_note_fixes(items):
+    apply_descriptions(items)
     for item in items:
         name = item.get('name', '')
         replacement = NOTE_FIXES.get(name)
