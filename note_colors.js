@@ -66,3 +66,15 @@ window.renderPyramid=function(p){
  }
 };
 })();
+
+(() => {
+'use strict';
+const sentence='Если новой иконки нет, сохранён прежний рисунок.';
+function start(){
+ const root=document.getElementById('pyramid');if(!root)return;
+ const clean=()=>{for(const caption of root.querySelectorAll('.pyramid-caption')){const text=caption.textContent;if(text.includes(sentence))caption.textContent=text.replace(sentence,'').trim();}};
+ new MutationObserver(clean).observe(root,{childList:true,subtree:true,characterData:true});
+ clean();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
