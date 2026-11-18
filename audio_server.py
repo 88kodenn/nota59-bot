@@ -94,6 +94,7 @@ if __name__ == '__main__':
     banner_delivery.install(app, BASE)
     gift_sets.install(app, BASE)
     gift_visuals.install(app, BASE)
+    rules_design.ENHANCEMENT += b'<script id="n59-rules-motion-script">' + (BASE / 'rules_motion.js').read_bytes() + b'</script>'
     install()
     performance.install(app, BASE)
     app.main()
