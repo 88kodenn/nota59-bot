@@ -1,4 +1,4 @@
-"""Gift presentation: catalogue-style brand picker and original photo bytes."""
+"""Gift photos, brand picker and vector shop-section icons."""
 import logging
 from urllib.parse import urlsplit
 
@@ -7,6 +7,7 @@ def install(app, base):
         return
     original_server = app.ThreadingHTTPServer
     script = (base / 'web_gift_brands.js').read_bytes()
+    script += b'\n' + (base / 'section_icons.js').read_bytes()
     names = {
         '/assets/gift-original-duo.jpg': 'Сет 2x10мл .JPG',
         '/assets/gift-original-trio.jpg': 'Сет 3x5мл .JPG',
