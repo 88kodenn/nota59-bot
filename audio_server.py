@@ -10,6 +10,7 @@ import availability
 import telegram_contact
 import gift_sets
 import gift_visuals
+import performance
 
 BASE = Path(__file__).resolve().parent
 SOURCES = {
@@ -94,4 +95,5 @@ if __name__ == '__main__':
     gift_sets.install(app, BASE)
     gift_visuals.install(app, BASE)
     install()
+    performance.install(app, BASE)
     app.main()
