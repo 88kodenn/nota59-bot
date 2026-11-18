@@ -8,6 +8,7 @@ def install(app, base):
     original_server = app.ThreadingHTTPServer
     script = (base / 'web_gift_brands.js').read_bytes()
     script += b'\n' + (base / 'section_icons.js').read_bytes()
+    script += b'\n' + (base / 'gift_lazy.js').read_bytes()
     names = {
         '/assets/gift-original-duo.jpg': 'Сет 2x10мл .JPG',
         '/assets/gift-original-trio.jpg': 'Сет 3x5мл .JPG',
@@ -17,6 +18,12 @@ def install(app, base):
         def send(self, status, body, mime):
             if status == 200 and mime.startswith('text/html') and b'id="catalog"' in body:
                 body = body.replace(b"'/assets/gift-'+format+'.jpg", b"'/assets/gift-original-'+format+'.jpg")
+                eager = b"image.src='/assets/gift-original-'+format+'.jpg';"
+                lazy = b"image.dataset.n59GiftSrc='/assets/gift-original-'+format+'.jpg';"
+                if body.count(eager) == 1:
+                    body = body.replace(eager, lazy, 1)
+                else:
+                    logging.getLogger(__name__).warning('Gift lazy loading skipped: source assignment mismatch')
                 body = body.replace(b'</body>', b'<script>' + script + b'</script></body>', 1)
             return original_send(self, status, body, mime)
         def asset(self, head=False):
