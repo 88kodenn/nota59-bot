@@ -4,39 +4,53 @@ if(window.Nota59PickerV2)return;
 const profiles=[
 [['Amouage Interlude Man'],['Дымный','Древесный'],['Пряный','Кожаный'],1,2],
 [['Amouage Interlude Black Iris Man'],['Дымный','Древесный'],['Пряный','Кожаный'],1,2],
-[['Clive Christian Jump Up And Kiss Me Hedonistic (2021)'],['Древесный','Сладкий'],['Пряный'],1,2],
-[['Creed Aventus'],['Свежий','Древесный'],[],2,2],
-[['Creed Absolu Aventus 2025'],['Древесный','Пряный'],['Свежий'],2,2],
-[['Essential Parfums Bois Imperial'],['Древесный','Свежий'],['Пряный'],2,1],
-[['Ex Nihilo Blue Talisman'],['Свежий'],['Сладкий','Древесный','Цветочный'],2,2],
+[['Clive Christian Jump Up And Kiss Me Hedonistic (2021)'],['Древесный','Сладкий'],['Кожаный','Пряный','Табачный'],1,2],
+[['Creed Aventus'],['Свежий','Древесный'],['Фруктовый'],2,2],
+[['Creed Absolu Aventus 2025'],['Древесный','Пряный'],['Свежий','Фруктовый'],2,2],
+[['Essential Parfums Bois Imperial'],['Древесный'],['Свежий','Пряный'],2,1],
+[['Ex Nihilo Blue Talisman'],['Свежий'],['Сладкий','Древесный','Фруктовый'],2,2],
 [['Ex Nihilo The Hedonist'],['Древесный'],['Свежий','Пряный'],2,2],
-[['Ex Nihilo The Hedonist Extrait'],['Древесный'],['Пряный'],1,2],
-[['Jean Paul Gaultier Le Male Le Parfum'],['Сладкий','Пряный'],['Древесный'],1,2],
-[['Jean Paul Gaultier Le Male Elixir'],['Сладкий','Гурманский'],['Пряный'],1,2],
+[['Ex Nihilo The Hedonist Extrait'],['Древесный'],['Пряный','Фруктовый'],1,2],
+[['Jean Paul Gaultier Le Male Le Parfum'],['Сладкий','Пряный'],['Древесный','Цветочный'],1,2],
+[['Jean Paul Gaultier Le Male Elixir'],['Сладкий','Гурманский'],['Табачный'],1,2],
 [['Kilian Angels Share'],['Гурманский','Сладкий'],['Пряный','Древесный'],1,2],
-[['Louis Vuitton Pacific Chill'],['Свежий'],['Сладкий'],2,1],
-[['Maison Crivelli Oud Maracuja'],['Древесный','Кожаный'],['Сладкий'],1,2],
+[['Louis Vuitton Pacific Chill'],['Свежий','Фруктовый'],['Сладкий'],2,1],
+[['Maison Crivelli Oud Maracuja'],['Фруктовый','Древесный','Кожаный'],['Сладкий'],1,2],
 [['Parfums de Marly Althair'],['Сладкий','Гурманский'],['Пряный','Древесный'],1,2],
-[['Parfums de Marly Herod'],['Сладкий','Пряный'],['Древесный'],1,2],
+[['Parfums de Marly Herod'],['Табачный','Сладкий'],['Пряный','Древесный'],1,2],
 [['Tom Ford Grey Vetiver EDP'],['Древесный','Свежий'],['Пряный'],2,2],
 [['Tom Ford Noir Extreme EDP'],['Гурманский','Пряный'],['Сладкий','Древесный'],1,2],
-[['Tom Ford Soleil Blanc EDP'],['Цветочный'],['Сладкий','Гурманский'],2,2],
-[['Viktor & Rolf Spicebomb'],['Пряный'],['Древесный','Кожаный'],1,2],
+[['Tom Ford Soleil Blanc EDP'],['Цветочный'],['Сладкий'],2,2],
+[['Viktor & Rolf Spicebomb'],['Пряный'],['Табачный','Кожаный','Древесный'],1,2],
 [['Tom Ford Costa Azzurra EDP'],['Свежий','Древесный'],[],2,2],
 [['Tom Ford Ombré Leather EDP'],['Кожаный'],['Пряный','Древесный'],1,2],
 [['Tom Ford Neroli Portofino EDP'],['Свежий','Цветочный'],[],2,1],
-[['Xerjoff Naxos'],['Сладкий','Пряный'],['Гурманский'],1,2],
+[['Xerjoff Naxos'],['Пряный','Табачный'],['Сладкий','Гурманский'],1,2],
 [['Maison Margiela By the Fireplace','Maison Margiela By the Fireplace EDT','Maison Margiela Replica By the Fireplace','Maison Margiela Replica By the Fireplace EDT','Replica By the Fireplace','Replica By the Fireplace EDT','By the Fireplace','By the Fireplace EDT'],['Дымный','Древесный'],['Сладкий','Гурманский'],1,2],
 [['Giorgio Armani Stronger With You Intensely','Giorgio Armani Stronger With You Intensely EDP','Emporio Armani Stronger With You Intensely','Emporio Armani Stronger With You Intensely EDP','Armani Stronger With You Intensely','Armani Stronger With You Intensely EDP','Stronger With You Intensely','Stronger With You Intensely EDP'],['Сладкий','Гурманский'],['Пряный','Древесный'],1,2],
-[['Mancera Tonka Cola','Mancera Tonka Cola EDP','Tonka Cola','Tonka Cola EDP'],['Сладкий','Гурманский'],['Пряный'],1,2],
+[['Mancera Tonka Cola','Mancera Tonka Cola EDP','Tonka Cola','Tonka Cola EDP'],['Сладкий','Гурманский'],['Пряный','Фруктовый'],1,2],
 [['Dior Sauvage EDT','Dior Sauvage'],['Свежий','Пряный'],['Древесный'],2,2],
-[['Initio Wild Rush'],['Сладкий','Гурманский'],['Древесный'],1,2],
+[['Initio Wild Rush'],['Свежий','Сладкий'],['Гурманский','Древесный'],1,2],
 [['Amouage Purpose 50'],['Древесный','Пряный'],['Дымный','Кожаный'],1,2],
-[['Ex Nihilo Blue Talisman Extrait','Ex Nihilo Blue Talisman Extrait de Parfum'],['Цветочный','Древесный'],['Сладкий','Свежий'],2,2]
+[['Ex Nihilo Blue Talisman Extrait','Ex Nihilo Blue Talisman Extrait de Parfum'],['Древесный','Цветочный'],['Сладкий','Свежий'],2,2]
 ];
+const notes={
+'Initio Wild Rush':'Лавандово-травянистая свежесть и ягодно-карамельная сладость ощущаются наравне. Не только свежий и не только десертный характер.',
+'Clive Christian Jump Up And Kiss Me Hedonistic (2021)':'Фруктовая сладость уравновешена табачно-древесной и кожаной стороной.',
+'Ex Nihilo Blue Talisman Extrait':'В центре — сандаловая древесная база и цветочная сторона. Оценка относится именно к Extrait.',
+'Ex Nihilo Blue Talisman Extrait de Parfum':'В центре — сандаловая древесная база и цветочная сторона. Оценка относится именно к Extrait.',
+'Tom Ford Soleil Blanc EDP':'Ведущая сторона — цветочная с кокосовым оттенком. Не предлагаем как гурманское совпадение.',
+'Xerjoff Naxos':'На первом плане — лавандово-табачная и пряная сторона. Медово-ванильная сладость дополнительная.',
+'Amouage Purpose 50':'На первом плане — древесина и пряности. Дымные и замшевые оттенки не считаем ведущими.',
+'Maison Crivelli Oud Maracuja':'Маракуйя сохраняется на протяжении звучания; слышны уд и кожа. На старте фруктовость ассоциируется с переспелой, чуть забродившей маракуйей. Это ассоциация, не заявленная нота.',
+'Parfums de Marly Herod':'Мягкий табачный характер с сиропной сладостью, напоминающий вишнёвый трубочный табак. Немного ванили и пряностей. Вишня здесь — ассоциация, не заявленная нота.',
+'Parfums de Marly Althair':'Сухая стручковая бурбонская ваниль с умеренной сладостью и гурманским характером.'
+};
 const normalize=value=>String(value||'').normalize('NFC').toLocaleLowerCase('ru-RU').replace(/\s+/g,' ').trim();
 const byName=new Map();for(const profile of profiles)for(const name of profile[0]){const key=normalize(name);if(byName.has(key))throw new Error('Duplicate picker profile: '+name);byName.set(key,profile);}
-const directions=['Свежий','Сладкий','Древесный','Пряный','Гурманский','Дымный','Кожаный','Цветочный'];
+const reservedNames=new Set([normalize('Ex Nihilo Blue Talisman')]);
+const noteByName=new Map(Object.entries(notes).map(([name,text])=>[normalize(name),text]));
+const directions=['Свежий','Сладкий','Древесный','Пряный','Гурманский','Дымный','Кожаный','Цветочный','Фруктовый','Табачный'];
 const occasions=['На каждый день','На вечер',''];
 const validPrice=value=>typeof value==='number'&&Number.isFinite(value)&&value>0;
 function recommend(payload,occasion='',direction=''){
@@ -45,17 +59,17 @@ function recommend(payload,occasion='',direction=''){
  const ranked=[],seen=new Set();let unprofiled=0;
  for(const product of payload.items){
   if(!product||typeof product.name!=='string'||product.available===false||!validPrice(product.price5)&&!validPrice(product.price10))continue;
-  const key=normalize(product.name);if(seen.has(key))continue;seen.add(key);
+  const key=normalize(product.name);if(seen.has(key)||reservedNames.has(key))continue;seen.add(key);
   const profile=byName.get(key);if(!profile){unprofiled++;continue;}
   const strength=direction?(profile[1].includes(direction)?2:profile[2].includes(direction)?1:0):0;
   if(direction&&!strength)continue;
   const occasionFit=occasion?profile[occasion==='На каждый день'?3:4]:0;
-  ranked.push({product,primary:profile[1],strength,occasionFit,score:strength*10+occasionFit*3});
+  ranked.push({product,primary:profile[1],strength,occasionFit,score:strength*10+occasionFit*3,note:noteByName.get(key)||''});
  }
  ranked.sort((a,b)=>b.score-a.score||normalize(a.product.name).localeCompare(normalize(b.product.name),'ru'));
  return {loading:false,items:ranked,unprofiled};
 }
-window.Nota59PickerV2=Object.freeze({recommend,directions:Object.freeze(directions),profileCount:profiles.length,version:2});
+window.Nota59PickerV2=Object.freeze({recommend,directions:Object.freeze(directions),profileCount:profiles.length,version:'2.1-calibrated'});
 function mount(){
  const panel=document.getElementById('n59-picker'),trigger=document.getElementById('n59-picker-open');
  if(!panel||!trigger||panel.dataset.pickerV2)return;panel.dataset.pickerV2='true';
@@ -93,13 +107,14 @@ function mount(){
     const explanations=[];if(direction)explanations.push(match.strength===2?'Основное направление: '+direction.toLocaleLowerCase('ru-RU')+'.':'Выбранное направление присутствует как дополнительный оттенок: '+direction.toLocaleLowerCase('ru-RU')+'.');else explanations.push('Основные направления: '+match.primary.join(', ')+'.');
     if(occasion)explanations.push(match.occasionFit===2?'Приоритетный вариант для выбранной ситуации в редакционной подборке магазина.':'Для выбранной ситуации — менее приоритетный вариант; оцените комфортную дозировку на себе.');
     card.append(make('p',explanations.join(' ')));
+    if(match.note)card.append(make('p','Оценка магазина: '+match.note));
     const prices=[];if(validPrice(p.price5))prices.push('5 мл — '+new Intl.NumberFormat('ru-RU').format(p.price5)+' ₽');if(validPrice(p.price10))prices.push('10 мл — '+new Intl.NumberFormat('ru-RU').format(p.price10)+' ₽');card.append(make('p',prices.join(' · ')));
     card.append(button('Посмотреть аромат',()=>{const latest=current()?.items.find(item=>normalize(item.name)===normalize(p.name)&&item.brand===p.brand);if(!latest||latest.available===false){resultsAgain();return;}panel.close();openProduct(latest);},'qp-detail'));resultsList.append(card);
    }more.hidden=shown>=result.items.length;}
    body.append(more);draw();
   }
   if(result.unprofiled)body.append(make('p','Некоторые позиции пока не включены: для них требуется отдельная разметка.','qp-note'));
-  const about=make('details',undefined,'qp-about');about.append(make('summary','Как работает подбор'),make('p','Подборка магазина по двум ответам, не гарантия личной симпатии. Направления размечены редакционно для конкретных версий: основной характер отделён от дополнительных оттенков. Ситуация влияет на порядок, но не служит запретом. Отсутствующие товары исключены; неподтверждённые версии не подменяются похожими названиями. Проценты совпадения и обещания стойкости не используются. Ответы не сохраняются и не отправляются.'));body.append(about);navigation(true);
+  const about=make('details',undefined,'qp-about');about.append(make('summary','Как работает подбор'),make('p','Подборка магазина по двум ответам, не гарантия личной симпатии. Основные направления отделены от дополнительных. Часть профилей уточнена по личной оценке владельца магазина, остальные размечены редакционно; это не означает личное тестирование всех флаконов. Ситуация влияет на порядок, но не служит запретом. Отсутствующие товары исключены. Версии не подменяются похожими названиями; обычный Blue Talisman оставлен резервным профилем и не участвует в подборе. Проценты совпадения и обещания стойкости не используются. Ответы не сохраняются и не отправляются.'));body.append(about);navigation(true);
  }
  function resultsAgain(){body.replaceChildren();results();focus();}
  trigger.onclick=()=>{step=0;occasion='';direction='';panel.showModal();render();};
