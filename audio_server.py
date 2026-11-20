@@ -37,10 +37,11 @@ def strip_legacy_brand_block(body):
 def install():
     original_server = app.ThreadingHTTPServer
     script = (BASE / 'web_sounds.js').read_bytes()
-    guard = b"if(document.getElementById('n59-volume-sound')?.getAttribute('aria-pressed')==='false'||token!==sequence"
-    if script.count(b'if(token!==sequence') != 1:
+    sample_guard = b'if(token!==sequence||document.hidden||!buffers.has(kind)'
+    guard = b"if(document.getElementById('n59-volume-sound')?.getAttribute('aria-pressed')==='false'||token!==sequence||document.hidden||!buffers.has(kind)"
+    if script.count(sample_guard) != 1:
         raise RuntimeError('Unexpected sample audio guard; review web_sounds.js')
-    script = script.replace(b'if(token!==sequence', guard, 1)
+    script = script.replace(sample_guard, guard, 1)
     script += b"\ndocument.addEventListener('click',function(e){if(!(e.target instanceof Element)||!e.target.closest('#n59-volume-sound'))return;document.dispatchEvent(new Event('n59-audio-stop'));},true);\n"
     needle = b"document.addEventListener('visibilitychange',()=>{if(document.hidden){sequence++;if(active){try{active.stop();}catch(e){}active=null;}}});"
     replacement = b"function stopSample(){sequence++;if(active){try{active.stop();}catch(e){}active=null;}}document.addEventListener('n59-audio-stop',stopSample);document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSample();});"
@@ -48,6 +49,7 @@ def install():
         raise RuntimeError('Unexpected sample audio stop handler; review web_sounds.js')
     script = script.replace(needle, replacement, 1)
     script += b'\n' + (BASE / 'web_availability.js').read_bytes()
+    script += b'\n' + (BASE / 'picker_v2.js').read_bytes()
 
     def server(address, handler):
         original_get = handler.do_GET
@@ -61,6 +63,7 @@ def install():
                 if OLD_SELECTOR not in body:
                     logging.getLogger(__name__).warning('Legacy sound selector not found; check deployment source')
                 body = body.replace(OLD_SELECTOR, CAP_SELECTOR)
+                body = body.replace(b"const current=()=>typeof data!=='undefined'&&Array.isArray(data?.items)?data.items:null;", b"const current=()=>typeof data!=='undefined'&&Array.isArray(data?.items)?data:null;", 1)
                 body = body.replace(b'</body>', b'<script>' + script + b'</script></body>', 1)
             if status == 200 and ('javascript' in mime or mime.startswith('text/html')):
                 body = telegram_contact.patch(body)
